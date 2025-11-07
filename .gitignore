@@ -1,0 +1,57 @@
+# 컴파일된 파일
+/dist
+/node_modules
+*.js.map
+
+# 로그 파일
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS 파일
+.DS_Store
+
+# 테스트 커버리지
+/coverage
+/.nyc_output
+
+# IDE 설정
+.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# 환경 변수
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# 임시 파일
+*.swp
+*.swo
+*~
+
+# 빌드 파일
+build/
+
+# Prisma
+/generated/prisma
+prisma.config.ts
+
+# pnpm
+.pnpm-debug.log
+.pnpm-store
