@@ -23,3 +23,19 @@ model User {
 
   @@map("users")
 }
+
+// 감사 로그 모델 (AuditLogPlugin 지원)
+model AuditLog {
+  id           String   @id @default(uuid())
+  action       String   // CREATE, UPDATE, DELETE
+  resourceType String   // User, Post 등 리소스 타입
+  resourceId   String   // 리소스 ID
+  userId       String?  // 작업 수행한 사용자 ID (nullable - 인증 없는 작업 가능)
+  ip           String?  // IP 주소
+  timestamp    DateTime @default(now())
+
+  @@map("audit_logs")
+  @@index([resourceType, resourceId])
+  @@index([userId])
+  @@index([timestamp])
+}
