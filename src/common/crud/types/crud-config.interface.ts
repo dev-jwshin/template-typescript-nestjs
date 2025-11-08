@@ -5,7 +5,7 @@ import { ParamValidation } from './param-validation.interface';
 import { PaginationConfig } from './pagination-config.interface';
 import { PerformanceConfig } from './performance-config.interface';
 import { RouteConfig } from './route-config.interface';
-import { CrudPlugin } from './crud-plugin.interface';
+import { CrudPlugin } from '../plugins/crud-plugin.interface';
 
 /**
  * 메인 CRUD 데코레이터 설정 인터페이스

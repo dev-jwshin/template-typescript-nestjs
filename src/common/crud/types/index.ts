@@ -6,7 +6,6 @@
 
 export * from './crud-config.interface';
 export * from './crud-operation.enum';
-export * from './crud-plugin.interface';
 export * from './crud-request.interface';
 export * from './filter-operator.type';
 export * from './pagination-config.interface';

@@ -1,11 +1,12 @@
 import { CrudConfig } from '../types';
 import { CrudMetadataStorage } from '../metadata';
+import { CrudRouteFactory } from '../factories/crud-route.factory';
 
 /**
  * @Crud 데코레이터
  *
  * 클래스 데코레이터로 CRUD 엔드포인트를 자동 생성합니다.
- * 메타데이터를 저장하고 런타임에 라우트를 생성합니다.
+ * 메타데이터를 저장하고 즉시 라우트를 생성합니다.
  *
  * 사용 예시:
  * ```typescript
@@ -22,6 +23,13 @@ import { CrudMetadataStorage } from '../metadata';
  *   constructor(private readonly usersService: UsersService) {}
  * }
  * ```
+ *
+ * 자동 생성되는 엔드포인트:
+ * - Index: GET /users (목록 조회)
+ * - Show: GET /users/:id (단일 조회)
+ * - Create: POST /users (생성)
+ * - Update: PATCH /users/:id (수정)
+ * - Delete: DELETE /users/:id (삭제)
  *
  * @param config CRUD 설정 객체
  * @returns ClassDecorator
@@ -40,17 +48,18 @@ export function Crud(config: CrudConfig): ClassDecorator {
       });
     }
 
-    // 3. 디버그 로그 (개발 환경)
+    // 3. 라우트 자동 생성 ⭐ 핵심 기능
+    CrudRouteFactory.generateRoutes(target, config);
+
+    // 4. 디버그 로그 (개발 환경)
     if (process.env.NODE_ENV !== 'production') {
       console.log(
         `[Crud Decorator] Applied to: ${target.name}`,
         `\n  - Resource Type: ${config.resourceType || 'N/A'}`,
         `\n  - Operations: ${config.only.join(', ')}`,
+        `\n  - Auto-generated Routes: ${config.only.length}`,
         `\n  - Eager Load: ${config.performance?.query?.eagerLoad ? 'Enabled' : 'Disabled'}`,
       );
     }
-
-    // 4. 라우트 생성은 CrudModule에서 처리됨
-    // (OnModuleInit 라이프사이클에서 실행)
   };
 }

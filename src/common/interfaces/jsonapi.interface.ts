@@ -116,7 +116,7 @@ export interface ResourceIdentifier {
  * 링크 객체
  */
 export interface Links {
-  [key: string]: string | LinkObject | null;
+  [key: string]: string | LinkObject | null | undefined;
 }
 
 /**
@@ -131,22 +131,22 @@ export interface LinkObject {
  * 리소스 링크
  */
 export interface ResourceLinks extends Links {
-  self?: string | LinkObject;
+  self?: string | LinkObject | null;
 }
 
 /**
  * 관계 링크
  */
 export interface RelationshipLinks extends Links {
-  self?: string | LinkObject;
-  related?: string | LinkObject;
+  self?: string | LinkObject | null;
+  related?: string | LinkObject | null;
 }
 
 /**
  * 페이지네이션 링크
  */
 export interface PaginationLinks extends Links {
-  self?: string | LinkObject;
+  self?: string | LinkObject | null;
   first?: string | LinkObject | null;
   last?: string | LinkObject | null;
   prev?: string | LinkObject | null;

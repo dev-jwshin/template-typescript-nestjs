@@ -3,4 +3,6 @@
  */
 
 export * from './crud.decorator';
-export * from './hook.decorators';
+export * from './hook.decorator';
+export * from './param.decorator';
+export * from './swagger.decorator';
