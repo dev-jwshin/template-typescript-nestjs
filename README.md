@@ -817,13 +817,25 @@ curl -X DELETE http://localhost:3000/api/users/1
 | `isNull` | NULL 여부 | `?filter[deletedAt][isNull]=true` |
 | `isNotNull` | NOT NULL 여부 | `?filter[deletedAt][isNotNull]=true` |
 
-## 💾 데이터베이스 관리
+## 💾 데이터베이스 관리 (Prisma ORM)
+
+이 프로젝트는 [Prisma](https://www.prisma.io/)를 ORM으로 사용하여 PostgreSQL과 통신합니다.
+
+### 주요 특징
+
+- **타입 안전성**: 자동 생성된 타입으로 완벽한 타입 안전성 제공
+- **직관적인 API**: 가독성 높은 쿼리 작성
+- **마이그레이션 시스템**: 데이터베이스 스키마 버전 관리
+- **Prisma Studio**: 내장 데이터베이스 GUI
 
 ### Prisma 명령어
 
 ```bash
 # Prisma Studio (데이터베이스 GUI)
 pnpm prisma:studio
+
+# Prisma Client 생성
+pnpm prisma:generate
 
 # 스키마 변경 후 마이그레이션 생성
 pnpm prisma:migrate
@@ -836,6 +848,61 @@ pnpm db:reset
 
 # 스키마를 데이터베이스에 직접 푸시 (개발 전용)
 pnpm db:push
+
+# 스키마 파일 포맷팅
+pnpm prisma format
+
+# 스키마 검증
+pnpm prisma validate
+```
+
+### 스키마 정의 예시
+
+```prisma
+// prisma/schema.prisma
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+```
+
+### 기본 쿼리 패턴
+
+```typescript
+// 생성
+const user = await prisma.user.create({
+  data: {
+    name: 'John Doe',
+    email: 'john@example.com',
+    password: hashedPassword,
+  },
+});
+
+// 조회
+const users = await prisma.user.findMany({
+  where: { isActive: true },
+  orderBy: { createdAt: 'desc' },
+  take: 10,
+  skip: 0,
+});
+
+// 수정
+const updated = await prisma.user.update({
+  where: { id: userId },
+  data: { name: 'Jane Doe' },
+});
+
+// 삭제
+await prisma.user.delete({
+  where: { id: userId },
+});
 ```
 
 ### 마이그레이션 워크플로우
@@ -844,6 +911,8 @@ pnpm db:push
 2. `pnpm prisma:migrate` 실행하여 마이그레이션 생성
 3. 마이그레이션 파일 확인 (`prisma/migrations/`)
 4. 커밋 후 배포 시 `pnpm prisma:migrate:deploy` 실행
+
+📚 **자세한 내용**: [PRISMA.md](./PRISMA.md) 참고
 
 ## 🔐 보안
 
@@ -865,10 +934,47 @@ pnpm db:push
 
 MIT License
 
-## 🔗 참고 자료
+## 📚 상세 문서
+
+프로젝트의 상세한 기술 문서들입니다:
+
+### 핵심 가이드
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - 시스템 아키텍처 상세 설명
+  - 계층화된 아키텍처 구조
+  - JSON:API 레이어 통합
+  - 설계 원칙 (SOLID)
+  - 성능 최적화 가이드
+
+- **[JSON_API.md](./JSON_API.md)** - JSON:API 1.1 스펙 완전 가이드
+  - 응답/요청 형식 상세 설명
+  - 쿼리 파라미터 사용법 (Filtering, Sorting, Pagination)
+  - 에러 처리 가이드
+  - cURL 및 JavaScript 예시
+
+- **[PRISMA.md](./PRISMA.md)** - Prisma ORM 완전 가이드
+  - 스키마 정의 및 마이그레이션
+  - 고급 쿼리 패턴
+  - 관계 설정 및 트랜잭션
+  - 성능 최적화 및 모범 사례
+
+### CRUD 데코레이터 시스템
+- **[docs/CRUD_DECORATOR_GUIDE.md](./docs/CRUD_DECORATOR_GUIDE.md)** - CRUD 데코레이터 사용 가이드
+  - @Crud 데코레이터 상세 설명
+  - Hook & Plugin 시스템
+  - 성능 최적화 (N+1 쿼리 방지)
+  - 실전 예제 및 마이그레이션 가이드
+
+### 개발 참고 자료
+- **docs/archive/** - 개발 과정 문서 (아카이브)
+  - 테스트 결과 및 구현 워크플로우
+  - 프로젝트 요약 및 구현 히스토리
+
+## 🔗 외부 참고 자료
 
 - [NestJS 공식 문서](https://docs.nestjs.com/)
 - [TypeScript 공식 문서](https://www.typescriptlang.org/)
+- [Prisma 공식 문서](https://www.prisma.io/docs)
+- [JSON:API 공식 스펙](https://jsonapi.org/format/1.1/)
 - [Claude Code 가이드](https://docs.claude.com/claude-code)
 
 ---
