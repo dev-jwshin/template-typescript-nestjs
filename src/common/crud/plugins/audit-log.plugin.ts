@@ -1,4 +1,7 @@
-import { CrudPlugin, CrudConfig, CrudOperation, CrudRequest } from '../types';
+import { CrudPlugin } from './crud-plugin.interface';
+import { CrudConfig } from '../types/crud-config.interface';
+import { CrudOperation } from '../types/crud-operation.enum';
+import { CrudHookContext } from '../types/crud-hook.interface';
 
 /**
  * 감사 로그 플러그인
@@ -54,35 +57,35 @@ export const AuditLogPlugin: CrudPlugin = {
   registerHooks() {
     return {
       after: {
-        [CrudOperation.Create]: async (entity: any, req: CrudRequest) => {
+        [CrudOperation.Create]: async (entity: any, context: CrudHookContext) => {
           await logAudit({
             action: 'CREATE',
             resourceType: entity.constructor?.name || 'Unknown',
             resourceId: entity.id,
-            userId: req.user?.id || req.user?.sub,
-            ip: req.ip,
+            userId: context.user?.id || context.user?.sub,
+            ip: context.ip,
             timestamp: new Date(),
           });
         },
 
-        [CrudOperation.Update]: async (entity: any, req: CrudRequest) => {
+        [CrudOperation.Update]: async (entity: any, context: CrudHookContext) => {
           await logAudit({
             action: 'UPDATE',
             resourceType: entity.constructor?.name || 'Unknown',
             resourceId: entity.id,
-            userId: req.user?.id || req.user?.sub,
-            ip: req.ip,
+            userId: context.user?.id || context.user?.sub,
+            ip: context.ip,
             timestamp: new Date(),
           });
         },
 
-        [CrudOperation.Delete]: async (entity: any, req: CrudRequest) => {
+        [CrudOperation.Delete]: async (entity: any, context: CrudHookContext) => {
           await logAudit({
             action: 'DELETE',
             resourceType: entity.constructor?.name || 'Unknown',
             resourceId: entity.id,
-            userId: req.user?.id || req.user?.sub,
-            ip: req.ip,
+            userId: context.user?.id || context.user?.sub,
+            ip: context.ip,
             timestamp: new Date(),
           });
         },

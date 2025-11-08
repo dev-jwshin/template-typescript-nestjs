@@ -3,3 +3,5 @@
  */
 
 export * from './crud-base.service';
+export * from './crud-hook-executor.service';
+export * from './crud-performance.service';
