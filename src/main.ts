@@ -14,6 +14,14 @@ import { JsonApiExceptionFilter } from './common/filters/jsonapi-exception.filte
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // JSON:API Content-Type 지원을 위한 body parser 설정
+  app.use((req: any, res: any, next: any) => {
+    if (req.headers['content-type'] === 'application/vnd.api+json') {
+      req.headers['content-type'] = 'application/json';
+    }
+    next();
+  });
+
   // JSON:API 에러 필터 글로벌 적용
   app.useGlobalFilters(new JsonApiExceptionFilter());
 
@@ -21,7 +29,7 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // DTO에 정의되지 않은 속성 제거
-      forbidNonWhitelisted: true, // 정의되지 않은 속성 요청 시 에러
+      // JSON:API 형식 지원을 위해 forbidNonWhitelisted 제거
       transform: true, // 요청 데이터를 DTO 인스턴스로 자동 변환
       transformOptions: {
         enableImplicitConversion: true, // 타입 자동 변환
