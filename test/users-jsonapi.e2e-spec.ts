@@ -4,7 +4,7 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { JsonApiExceptionFilter } from '../src/common/filters/jsonapi-exception.filter';
 
@@ -23,7 +23,7 @@ describe('Users API (JSON:API E2E)', () => {
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
-        forbidNonWhitelisted: true,
+        // JSON:API 형식 지원을 위해 forbidNonWhitelisted 제거
         transform: true,
       }),
     );

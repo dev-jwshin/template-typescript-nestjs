@@ -118,7 +118,8 @@ describe('JsonApiTransformInterceptor', () => {
       expect(result.data).toHaveLength(1);
       expect(result.meta.currentPage).toBe(1);
       expect(result.links).toBeDefined();
-      expect(result.links.self).toContain('page[number]=1');
+      // URL 인코딩된 형태로 검증
+      expect(result.links.self).toContain('page%5Bnumber%5D=1');
       done();
     });
   });

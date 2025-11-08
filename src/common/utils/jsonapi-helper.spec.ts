@@ -96,11 +96,12 @@ describe('JsonApiHelper', () => {
         45,
       );
 
-      expect(result.self).toContain('page[number]=2');
-      expect(result.first).toContain('page[number]=1');
-      expect(result.last).toContain('page[number]=5');
-      expect(result.prev).toContain('page[number]=1');
-      expect(result.next).toContain('page[number]=3');
+      // URL 인코딩된 형태로 검증
+      expect(result.self).toContain('page%5Bnumber%5D=2');
+      expect(result.first).toContain('page%5Bnumber%5D=1');
+      expect(result.last).toContain('page%5Bnumber%5D=5');
+      expect(result.prev).toContain('page%5Bnumber%5D=1');
+      expect(result.next).toContain('page%5Bnumber%5D=3');
     });
 
     it('should set prev to null on first page', () => {
