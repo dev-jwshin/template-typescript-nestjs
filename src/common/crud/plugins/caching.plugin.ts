@@ -1,7 +1,9 @@
+import { Inject } from '@nestjs/common';
 import { CrudPlugin } from './crud-plugin.interface';
 import { CrudConfig } from '../types/crud-config.interface';
 import { CrudOperation } from '../types/crud-operation.enum';
 import { CrudHookContext } from '../types/crud-hook.interface';
+import { CacheStore } from '../../cache/interfaces/cache-store.interface';
 
 /**
  * 캐싱 플러그인

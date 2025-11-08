@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './database/prisma.module';
+import { CacheModule } from './common/cache/cache.module';
 import { JsonApiTransformMiddleware } from './common/middlewares/jsonapi-transform.middleware';
 
 /**
@@ -25,6 +26,8 @@ import { JsonApiTransformMiddleware } from './common/middlewares/jsonapi-transfo
     }),
     // 데이터베이스 설정
     PrismaModule,
+    // 캐시 설정
+    CacheModule,
     // 기능 모듈
     HealthModule,
     UsersModule,

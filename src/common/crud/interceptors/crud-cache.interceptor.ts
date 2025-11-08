@@ -3,9 +3,11 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  Inject,
 } from '@nestjs/common';
-import { Observable, of } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { Observable, of, from } from 'rxjs';
+import { tap, switchMap } from 'rxjs/operators';
+import { CacheStore } from '../../cache/interfaces/cache-store.interface';
 
 /**
  * CRUD 캐싱 인터셉터
@@ -17,7 +19,7 @@ import { tap } from 'rxjs/operators';
  * - POST/PATCH/DELETE: 캐시 무효화 (해당 리소스의 모든 캐시 삭제)
  *
  * 프로덕션 권장:
- * - Redis 기반 캐싱 (cache-manager + cache-manager-redis-store)
+ * - Redis 기반 캐싱 (CACHE_DRIVER=redis)
  * - TTL 설정 (기본: 300초)
  *
  * 사용 예시:
@@ -32,18 +34,16 @@ import { tap } from 'rxjs/operators';
 @Injectable()
 export class CrudCacheInterceptor implements NestInterceptor {
   /**
-   * 인메모리 캐시 저장소
-   * 프로덕션 환경에서는 Redis로 교체 권장
-   */
-  private cache = new Map<
-    string,
-    { data: any; timestamp: number; ttl: number }
-  >();
-
-  /**
    * 기본 TTL (초 단위)
    */
-  private readonly DEFAULT_TTL = 300; // 5분
+  private readonly DEFAULT_TTL = parseInt(
+    process.env.REDIS_TTL || '300',
+    10,
+  );
+
+  constructor(
+    @Inject('CACHE_STORE') private readonly cacheStore: CacheStore,
+  ) {}
 
   /**
    * 인터셉터 실행
@@ -55,25 +55,24 @@ export class CrudCacheInterceptor implements NestInterceptor {
     // GET 요청: 캐시 조회
     if (method === 'GET') {
       const cacheKey = this.generateCacheKey(request);
-      const cached = this.cache.get(cacheKey);
 
-      // 캐시 히트 && TTL 유효
-      if (cached && Date.now() - cached.timestamp < cached.ttl * 1000) {
-        console.log(`[Cache] HIT: ${cacheKey}`);
-        return of(cached.data);
-      }
+      return from(this.cacheStore.get(cacheKey)).pipe(
+        switchMap((cached) => {
+          // 캐시 히트
+          if (cached) {
+            console.log(`[Cache] HIT: ${cacheKey}`);
+            return of(cached);
+          }
 
-      console.log(`[Cache] MISS: ${cacheKey}`);
+          console.log(`[Cache] MISS: ${cacheKey}`);
 
-      // 캐시 미스: 요청 실행 후 캐시 저장
-      return next.handle().pipe(
-        tap((response) => {
-          this.cache.set(cacheKey, {
-            data: response,
-            timestamp: Date.now(),
-            ttl: this.DEFAULT_TTL,
-          });
-          console.log(`[Cache] STORED: ${cacheKey}`);
+          // 캐시 미스: 요청 실행 후 캐시 저장
+          return next.handle().pipe(
+            tap(async (response) => {
+              await this.cacheStore.set(cacheKey, response, this.DEFAULT_TTL);
+              console.log(`[Cache] STORED: ${cacheKey} (TTL: ${this.DEFAULT_TTL}s)`);
+            }),
+          );
         }),
       );
     }
@@ -81,8 +80,8 @@ export class CrudCacheInterceptor implements NestInterceptor {
     // POST/PATCH/DELETE: 캐시 무효화
     if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
       return next.handle().pipe(
-        tap(() => {
-          this.invalidateCache(request);
+        tap(async () => {
+          await this.invalidateCache(request);
         }),
       );
     }
@@ -113,39 +112,30 @@ export class CrudCacheInterceptor implements NestInterceptor {
    *
    * @param request Express Request
    */
-  private invalidateCache(request: any): void {
+  private async invalidateCache(request: any): Promise<void> {
     const baseUrl = request.baseUrl + request.path.split('/')[0];
-    let invalidatedCount = 0;
+    const pattern = `${baseUrl}*`;
 
-    this.cache.forEach((_, key) => {
-      if (key.startsWith(baseUrl)) {
-        this.cache.delete(key);
-        invalidatedCount++;
-      }
-    });
+    await this.cacheStore.deletePattern(pattern);
 
-    if (invalidatedCount > 0) {
-      console.log(
-        `[Cache] INVALIDATED: ${invalidatedCount} keys for ${baseUrl}`,
-      );
-    }
+    console.log(`[Cache] INVALIDATED: pattern "${pattern}"`);
   }
 
   /**
    * 캐시 전체 초기화 (디버그용)
    */
-  clearAll(): void {
-    this.cache.clear();
+  async clearAll(): Promise<void> {
+    await this.cacheStore.clear();
     console.log('[Cache] CLEARED ALL');
   }
 
   /**
    * 캐시 통계 조회 (디버그용)
    */
-  getStats(): { size: number; keys: string[] } {
+  async getStats(): Promise<{ size: number; connected: boolean }> {
     return {
-      size: this.cache.size,
-      keys: Array.from(this.cache.keys()),
+      size: await this.cacheStore.size(),
+      connected: await this.cacheStore.isConnected(),
     };
   }
 }
