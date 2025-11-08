@@ -914,6 +914,83 @@ await prisma.user.delete({
 
 📚 **자세한 내용**: [PRISMA.md](./PRISMA.md) 참고
 
+## 🗄️ 캐싱 시스템
+
+애플리케이션 성능 향상을 위한 유연한 캐싱 시스템을 제공합니다.
+
+### 캐시 드라이버 설정
+
+두 가지 캐시 드라이버를 지원합니다:
+
+| 드라이버 | 설명 | 권장 환경 | 영속성 | 분산 지원 |
+|---------|------|----------|-------|----------|
+| **Memory** | 인메모리 캐시 | 개발, 소규모 | ❌ | ❌ |
+| **Redis** | Redis 서버 기반 | 프로덕션, 대규모 | ✅ | ✅ |
+
+### 환경 변수 설정
+
+```bash
+# .env
+
+# 캐시 드라이버 선택 (memory | redis)
+CACHE_DRIVER=memory
+
+# Redis 설정 (CACHE_DRIVER=redis일 때만 사용)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+REDIS_TTL=300
+```
+
+### Docker Compose로 Redis 실행
+
+```bash
+# Redis 컨테이너 시작
+docker-compose up -d redis
+
+# Redis 연결 테스트
+docker-compose exec redis redis-cli ping
+# 응답: PONG
+
+# Redis 모드로 애플리케이션 시작
+CACHE_DRIVER=redis pnpm run start:dev
+```
+
+### 캐시 동작 원리
+
+**CrudCacheInterceptor** 사용 시:
+1. **GET 요청**: 캐시 조회 → 히트 시 즉시 반환, 미스 시 DB 조회 후 캐시 저장
+2. **POST/PATCH/DELETE**: 자동 캐시 무효화
+
+```typescript
+// 컨트롤러에 캐시 적용
+@Controller('users')
+@UseInterceptors(CrudCacheInterceptor)
+export class UsersController {
+  // 모든 GET 요청이 자동으로 캐싱됨
+}
+```
+
+### 캐시 성능 비교
+
+| 지표 | Memory | Redis (로컬) | Redis (원격) |
+|------|--------|-------------|-------------|
+| 응답 시간 | ~1ms | ~2-5ms | ~10-30ms |
+| 처리량 | 매우 높음 | 높음 | 중간 |
+| 메모리 사용 | 프로세스 내 | 독립 프로세스 | 네트워크 |
+| 확장성 | 단일 인스턴스 | 다중 인스턴스 | 클러스터 |
+
+### Fallback 메커니즘
+
+Redis 연결 실패 시 자동으로 Memory 캐시로 전환됩니다:
+
+```
+[CacheFactory] Redis Store 생성 실패: Connection refused
+[CacheFactory] Memory Store로 대체합니다 (fallback)
+✅ Memory Store 사용
+```
+
 ## 🔐 보안
 
 - **Validation**: class-validator로 입력 데이터 검증
