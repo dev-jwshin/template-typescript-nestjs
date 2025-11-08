@@ -3,7 +3,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -13,15 +12,67 @@ datasource db {
 
 // 사용자 모델
 model User {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
-  email     String   @unique
+  email     String    @unique
   password  String
-  isActive  Boolean  @default(true)
+  age       Int?
+  role      String    @default("user")
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft delete 지원
+
+  // 관계
+  profile Profile?
+  posts   Post[]
+
+  @@map("users")
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
+}
+
+// 프로필 모델
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  bio       String?
+  avatar    String?
+  phone     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("users")
+  // 관계
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+// 포스트 모델
+model Post {
+  id         String    @id @default(uuid())
+  title      String
+  slug       String    @unique
+  content    String
+  excerpt    String?
+  authorId   String
+  published  Boolean   @default(false)
+  featured   Boolean   @default(false)
+  viewCount  Int       @default(0)
+  tags       String[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime? // Soft delete 지원
+
+  // 관계
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("posts")
+  @@index([authorId])
+  @@index([published])
+  @@index([slug])
+  @@index([createdAt])
 }
 
 // 감사 로그 모델 (AuditLogPlugin 지원)
