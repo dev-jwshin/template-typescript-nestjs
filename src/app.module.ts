@@ -1,6 +1,13 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import {
+  I18nModule,
+  AcceptLanguageResolver,
+  QueryResolver,
+  HeaderResolver,
+} from 'nestjs-i18n';
+import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './database/prisma.module';
@@ -8,12 +15,14 @@ import { CacheModule } from './common/cache/cache.module';
 import { JsonApiTransformMiddleware } from './common/middlewares/jsonapi-transform.middleware';
 import { JsonApiTransformInterceptor } from './common/interceptors/jsonapi-transform.interceptor';
 import { ALL_MODULES } from './modules';
+import configuration from './config/configuration';
 
 /**
  * 애플리케이션 루트 모듈
  *
  * @description
  * - 환경 변수 설정 (ConfigModule)
+ * - 다국어 지원 (I18nModule)
  * - 데이터베이스 설정 (PrismaModule)
  * - 기능 모듈 자동 임포트 (ALL_MODULES)
  * - 글로벌 프로바이더 설정
@@ -26,11 +35,28 @@ import { ALL_MODULES } from './modules';
  */
 @Module({
   imports: [
-    // 환경 변수 설정
+    // 환경 변수 설정 (중앙화)
     ConfigModule.forRoot({
       isGlobal: true, // 전역으로 사용 가능
+      load: [configuration], // 중앙화된 설정 파일 로드
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
       cache: true, // 환경 변수 캐싱
+    }),
+    // 다국어 설정 (I18n)
+    I18nModule.forRoot({
+      fallbackLanguage: 'ko', // 기본 언어
+      loaderOptions: {
+        path: path.join(__dirname, '/i18n/'),
+        watch: true, // 개발 모드에서 파일 변경 감지
+      },
+      resolvers: [
+        // ?lang=en 쿼리 파라미터로 언어 설정
+        { use: QueryResolver, options: ['lang'] },
+        // Accept-Language 헤더로 언어 자동 감지
+        AcceptLanguageResolver,
+        // X-Custom-Lang 헤더로 언어 설정
+        new HeaderResolver(['x-custom-lang']),
+      ],
     }),
     // 데이터베이스 설정
     PrismaModule,

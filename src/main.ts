@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { JsonApiExceptionFilter } from './common/filters/jsonapi-exception.filter';
+import { I18nValidationPipe } from './common/pipes/i18n-validation.pipe';
 
 /**
  * 애플리케이션 부트스트랩 함수
@@ -10,6 +11,7 @@ import { JsonApiExceptionFilter } from './common/filters/jsonapi-exception.filte
  * - Swagger API 문서 설정
  * - CORS 및 보안 설정
  * - JSON:API 1.1 스펙 적용
+ * - 다국어 검증 메시지 지원 (I18n)
  */
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -25,11 +27,12 @@ async function bootstrap() {
   // JSON:API 에러 필터 글로벌 적용
   app.useGlobalFilters(new JsonApiExceptionFilter());
 
-  // 글로벌 밸리데이션 파이프 설정
+  // 글로벌 밸리데이션 파이프 설정 (I18n 지원)
   app.useGlobalPipes(
+    new I18nValidationPipe(),
+    // 추가 변환 옵션을 위한 기본 ValidationPipe
     new ValidationPipe({
       whitelist: true, // DTO에 정의되지 않은 속성 제거
-      // JSON:API 형식 지원을 위해 forbidNonWhitelisted 제거
       transform: true, // 요청 데이터를 DTO 인스턴스로 자동 변환
       transformOptions: {
         enableImplicitConversion: true, // 타입 자동 변환
