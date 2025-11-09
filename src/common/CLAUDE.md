@@ -618,7 +618,7 @@ export class UsersService extends CrudBaseService<User> {
   ) {
     super(prisma, 'user', {
       allowedFilters: { name: ['eq', 'like'] },
-      serialize: { exclude: ['password'] },
+      // 직렬화는 user.serializer.ts에서 관리 (파일 기반 Serializer 사용)
     });
   }
 

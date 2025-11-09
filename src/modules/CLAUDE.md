@@ -163,9 +163,7 @@ export class AdminUsersController {
 @Crud({
   only: [CrudOperation.Index, CrudOperation.Show], // 조회만
   resourceType: 'users',
-  serialize: {
-    exclude: ['password', 'email'], // 민감 정보 제외
-  },
+  // 민감 정보 제외는 user.serializer.ts에서 관리 (파일 기반 Serializer 사용)
 })
 @Controller('users')
 export class UsersController {
@@ -470,9 +468,7 @@ export class UsersService extends CrudBaseService<User> {
       performance: {
         query: { eagerLoad: true },
       },
-      serialize: {
-        exclude: ['password'],
-      },
+      // 직렬화는 user.serializer.ts에서 관리 (파일 기반 Serializer 사용)
     });
   }
 
