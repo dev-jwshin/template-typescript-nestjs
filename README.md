@@ -62,19 +62,71 @@ curl -X POST http://localhost:3000/api/users \
 
 ## ⚡ @Crud 데코레이터 시스템
 
-이 프로젝트는 **80% 코드 감소**를 달성하는 강력한 CRUD 데코레이터 시스템을 제공합니다.
+이 프로젝트는 **90% 코드 감소**를 달성하는 강력한 CRUD 데코레이터 시스템을 제공합니다.
 
 ### 주요 특징
 
-- 🚀 **자동 CRUD 엔드포인트 생성** - 단일 데코레이터로 5개 엔드포인트 자동 생성
+- 🚀 **@CrudEntity 데코레이터** - Entity 중심 설계로 Service 레이어 코드 90% 감소 (50줄 → 5줄)
+- 🔄 **재귀적 직렬화** - 관계 데이터의 민감 정보 자동 제외 (password, apiKey 등)
+- 🎯 **자동 CRUD 엔드포인트 생성** - 단일 데코레이터로 5개 엔드포인트 자동 생성
 - 🔍 **13가지 필터 연산자** - eq, ne, gt, gte, lt, lte, like, ilike, in, nin, between, isNull, isNotNull
 - 📄 **자동 페이지네이션** - Offset 및 Cursor 기반 페이지네이션 지원
-- 🎯 **Sparse Fieldsets** - 필요한 필드만 선택적으로 조회
+- 🎨 **Sparse Fieldsets** - 필요한 필드만 선택적으로 조회
 - 🔗 **관계 포함** - Eager loading으로 N+1 쿼리 자동 최적화
 - 🎨 **JSON:API 1.1 완전 준수** - 표준화된 요청/응답 형식
 - 🔌 **Hook & Plugin 시스템** - Before/After 훅과 확장 가능한 플러그인
 
-### 기본 사용법
+### 새로운 방식: @CrudEntity 데코레이터 (권장)
+
+**Service 레이어 코드 90% 감소** - Entity 중심 설계로 설정을 한 곳에서 관리
+
+```typescript
+// 1. Entity에 @CrudEntity 데코레이터 적용
+import { CrudEntity } from '../../common/crud';
+
+@CrudEntity({
+  modelName: 'user',  // Prisma 모델명 (필수)
+  serialize: {
+    exclude: ['password'],  // 응답에서 제외할 필드
+  },
+})
+export class User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;  // ❌ 응답에서 자동 제외
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 2. Service 레이어 최소화 (단 5줄)
+import { Injectable } from '@nestjs/common';
+import { CrudBaseService } from '../../common/crud';
+import { PrismaService } from '../../database/prisma.service';
+import { User } from './user.entity';
+
+@Injectable()
+export class UsersService extends CrudBaseService<User> {
+  constructor(prisma: PrismaService) {
+    super(prisma, User);  // ✅ Entity 클래스만 전달 (모든 설정 자동 적용)
+  }
+}
+
+// 3. Controller는 기존과 동일
+@Crud({
+  only: [CrudOperation.Index, CrudOperation.Show],
+  resourceType: 'users',
+})
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+}
+```
+
+📚 **자세한 내용**: [docs/CRUD_ENTITY_DECORATOR.md](./docs/CRUD_ENTITY_DECORATOR.md)
+
+### 기존 방식: Controller + Service 설정 (호환성 유지)
 
 ```typescript
 import { Controller } from '@nestjs/common';
@@ -488,7 +540,73 @@ create(@Req() req: Request, @Body() body: CreateUserDto) {
 }
 ```
 
-📚 **자세한 내용**: [CRUD_DECORATOR_WORKFLOW.md](./CRUD_DECORATOR_WORKFLOW.md) 참고
+## 🔄 재귀적 직렬화 (Recursive Serialization)
+
+관계 데이터의 민감한 정보를 자동으로 제외하는 강력한 직렬화 시스템
+
+### 주요 기능
+
+- ✅ **자동 민감 정보 제외**: 관계 데이터에서도 password, apiKey 등 자동 제외
+- ✅ **재귀적 처리**: 깊이 제한 없이 중첩된 관계 데이터 모두 직렬화
+- ✅ **Entity 중심 설정**: serialize.relations로 관계별 직렬화 규칙 정의
+- ✅ **ServiceRegistry**: 서비스 간 자동 연결로 직렬화 로직 재사용
+
+### 사용 예시
+
+```typescript
+// 1. Post Entity에 serialize.relations 설정
+@CrudEntity({
+  modelName: 'post',
+  serialize: {
+    exclude: ['isDraft'],  // Post의 isDraft 필드 제외
+    relations: {
+      author: 'user',     // author 관계는 user 모델로 직렬화
+      comments: 'comment', // comments 관계는 comment 모델로 직렬화
+    },
+  },
+})
+export class Post {
+  id: string;
+  title: string;
+  isDraft: boolean;  // ❌ 응답에서 제외
+  author?: User;     // ✅ User 직렬화 규칙 자동 적용 (password 제외)
+  comments?: Comment[]; // ✅ Comment 직렬화 규칙 자동 적용
+}
+
+// 2. API 응답 예시
+GET /api/posts/1?include=author,comments
+
+// ✅ 재귀적 직렬화 적용 후
+{
+  "jsonapi": { "version": "1.1" },
+  "data": {
+    "type": "posts",
+    "id": "1",
+    "attributes": {
+      "title": "Hello World",
+      // "isDraft": false  ❌ 제외됨
+      "author": {
+        "id": "user-1",
+        "name": "John Doe",
+        "email": "john@example.com"
+        // "password": "..."  ❌ 자동 제외 (User 직렬화 규칙 적용)
+      },
+      "comments": [
+        {
+          "id": "comment-1",
+          "content": "Great post!",
+          // "authorEmail": "..." ❌ 자동 제외 (Comment 직렬화 규칙 적용)
+          // "authorIp": "..." ❌ 자동 제외
+        }
+      ]
+    }
+  }
+}
+```
+
+📚 **자세한 내용**: [docs/RECURSIVE_SERIALIZATION.md](./docs/RECURSIVE_SERIALIZATION.md)
+
+📚 **CRUD 워크플로우**: [CRUD_DECORATOR_WORKFLOW.md](./CRUD_DECORATOR_WORKFLOW.md) 참고
 
 ## 📂 프로젝트 구조
 

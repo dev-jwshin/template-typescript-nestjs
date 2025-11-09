@@ -1,15 +1,17 @@
 # @Crud 데코레이터 시스템 가이드
 
-> NestJS에서 보일러플레이트 코드를 80% 줄이는 선언적 CRUD 시스템
+> NestJS에서 보일러플레이트 코드를 90% 줄이는 선언적 CRUD 시스템
 
 ## 📋 목차
 
 - [개요](#개요)
+- [@CrudEntity 데코레이터 (NEW)](#crudentity-데코레이터-new)
 - [핵심 개념](#핵심-개념)
 - [빠른 시작](#빠른-시작)
 - [설정 옵션](#설정-옵션)
 - [고급 기능](#고급-기능)
 - [성능 최적화](#성능-최적화)
+- [재귀적 직렬화](#재귀적-직렬화)
 - [플러그인 시스템](#플러그인-시스템)
 - [훅 시스템](#훅-시스템)
 - [실전 예제](#실전-예제)
@@ -102,6 +104,79 @@ export class UsersController {
 - ✅ **JSON:API 1.1 준수**: 표준 REST API 스펙
 - ✅ **타입 안정성**: 100% TypeScript 타입 지원
 - ✅ **확장 가능**: 플러그인, 훅 시스템
+
+---
+
+## @CrudEntity 데코레이터 (NEW)
+
+### Service 레이어 코드 90% 감소
+
+**@CrudEntity**는 Entity 클래스에 CRUD 설정을 메타데이터로 저장하여 Service 레이어 코드를 극적으로 줄이는 데코레이터입니다.
+
+### Before vs After
+
+#### ❌ 기존 방식 (50줄)
+
+```typescript
+// src/modules/users/users.service.ts
+@Injectable()
+export class UsersService extends CrudBaseService<User> {
+  constructor(prisma: PrismaService) {
+    super(prisma, 'user', {
+      allowedIncludes: ['profile', 'posts'],
+      allowedFilters: {
+        name: ['eq', 'like'],
+        email: ['eq'],
+        isActive: ['eq'],
+      },
+      allowedSorts: ['createdAt', 'name'],
+      performance: {
+        query: { eagerLoad: true },
+      },
+      serialize: {
+        exclude: ['password'],
+      },
+    });
+  }
+}
+```
+
+#### ✅ 새 방식 (5줄) - 90% 감소
+
+```typescript
+// 1. Entity에 설정 집중
+@CrudEntity({
+  modelName: 'user',
+  serialize: {
+    exclude: ['password'],
+  },
+})
+export class User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;  // ❌ 응답에서 자동 제외
+}
+
+// 2. Service 레이어 최소화
+@Injectable()
+export class UsersService extends CrudBaseService<User> {
+  constructor(prisma: PrismaService) {
+    super(prisma, User);  // ✅ Entity 클래스만 전달
+  }
+}
+```
+
+### 주요 장점
+
+- ✅ **코드 중복 제거**: 여러 Service에서 같은 Entity 사용 시 설정 재사용
+- ✅ **Entity 중심 설계**: 데이터 모델과 설정이 함께 관리됨
+- ✅ **유지보수 용이**: 설정 변경 시 Entity만 수정하면 됨
+- ✅ **타입 안정성**: TypeScript 데코레이터로 타입 안전성 보장
+
+### 상세 가이드
+
+📚 **@CrudEntity 완전 가이드**: [docs/CRUD_ENTITY_DECORATOR.md](../../../docs/CRUD_ENTITY_DECORATOR.md)
 
 ---
 
@@ -737,6 +812,138 @@ const users = await prisma.user.findMany({
 - ✅ 페이지네이션 설정 (대량 데이터 조회 방지)
 - ✅ 인덱스 설정 (Prisma 스키마에 `@@index` 추가)
 - ✅ `allowedFilters` 제한 (허용된 필드만 필터링)
+
+---
+
+## 재귀적 직렬화
+
+### 관계 데이터의 민감 정보 자동 제외
+
+**재귀적 직렬화**는 Entity의 serialize 설정을 관계 데이터에도 자동으로 적용하는 강력한 기능입니다.
+
+### 문제 상황
+
+```typescript
+// ❌ 기존: 최상위 Entity만 직렬화
+@CrudEntity({
+  modelName: 'post',
+  serialize: {
+    exclude: ['isDraft'],
+  },
+})
+export class Post {
+  id: string;
+  title: string;
+  isDraft: boolean;
+  author?: User;  // User의 password가 그대로 노출됨!
+}
+
+// API 응답
+{
+  "id": "post-1",
+  "title": "Hello",
+  // "isDraft": false ✅ 제외됨
+  "author": {
+    "id": "user-1",
+    "name": "John",
+    "password": "hashed..." // ❌ 노출됨!
+  }
+}
+```
+
+### 해결 방법
+
+```typescript
+// ✅ serialize.relations 설정
+@CrudEntity({
+  modelName: 'post',
+  serialize: {
+    exclude: ['isDraft'],
+    relations: {
+      author: 'user',    // author 관계는 user 모델로 직렬화
+      comments: 'comment', // comments 관계는 comment 모델로 직렬화
+    },
+  },
+})
+export class Post {
+  id: string;
+  title: string;
+  isDraft: boolean;
+  author?: User;
+  comments?: Comment[];
+}
+
+// User Entity 설정
+@CrudEntity({
+  modelName: 'user',
+  serialize: {
+    exclude: ['password'],  // ✅ password 제외
+  },
+})
+export class User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+}
+
+// API 응답
+{
+  "id": "post-1",
+  "title": "Hello",
+  // "isDraft": false ✅ 제외됨
+  "author": {
+    "id": "user-1",
+    "name": "John",
+    "email": "john@example.com"
+    // "password": "..." ✅ 자동 제외됨!
+  },
+  "comments": [
+    {
+      "id": "comment-1",
+      "content": "Great!"
+      // "authorEmail": "..." ✅ 자동 제외됨!
+    }
+  ]
+}
+```
+
+### ServiceRegistry
+
+재귀적 직렬화는 **ServiceRegistry**를 통해 구현됩니다.
+
+```typescript
+// src/common/crud/registry/service-registry.ts
+export class ServiceRegistry {
+  private static services = new Map<string, any>();
+
+  static register(modelName: string, service: any): void {
+    this.services.set(modelName, service);
+  }
+
+  static get(modelName: string): any {
+    return this.services.get(modelName);
+  }
+}
+```
+
+**동작 과정**:
+1. CrudBaseService 생성 시 ServiceRegistry에 자동 등록
+2. serialize() 메서드에서 relations 설정 확인
+3. 관계 필드마다 ServiceRegistry에서 해당 모델의 Service 조회
+4. 조회된 Service의 serialize() 메서드 재귀 호출
+5. 깊이 제한 없이 모든 관계 데이터 직렬화
+
+### 주요 특징
+
+- ✅ **자동 등록**: Service 생성 시 ServiceRegistry에 자동 등록
+- ✅ **재귀적 처리**: 깊이 제한 없이 중첩된 관계 데이터 직렬화
+- ✅ **타입 안전성**: serialize.relations의 모델명 검증
+- ✅ **중복 제거**: 같은 모델은 한 번만 직렬화 설정 정의
+
+### 상세 가이드
+
+📚 **재귀적 직렬화 완전 가이드**: [docs/RECURSIVE_SERIALIZATION.md](../../../docs/RECURSIVE_SERIALIZATION.md)
 
 ---
 

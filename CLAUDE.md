@@ -30,10 +30,11 @@
 ### 프로젝트 특징
 
 1. **🤖 AI 친화적 구조**: 명확한 타입 정의와 표준화된 패턴
-2. **⚡ 80% 코드 감소**: @Crud 데코레이터 시스템으로 보일러플레이트 최소화
-3. **🎯 JSON:API 1.1 완전 준수**: 표준화된 REST API
-4. **🧪 테스트 커버리지 35%+**: 핵심 비즈니스 로직 100% 커버
-5. **🔧 확장 가능**: 모듈화된 아키텍처
+2. **⚡ 90% 코드 감소**: @CrudEntity 데코레이터로 Service 레이어 최소화 (50줄 → 5줄)
+3. **🔄 재귀적 직렬화**: 관계 데이터의 민감 정보 자동 제외 시스템
+4. **🎯 JSON:API 1.1 완전 준수**: 표준화된 REST API
+5. **🧪 테스트 커버리지 35%+**: 핵심 비즈니스 로직 100% 커버
+6. **🔧 확장 가능**: 모듈화된 아키텍처
 
 ---
 
@@ -158,7 +159,8 @@ template-typescript-nestjs/
 **현재 users 모듈 특징**:
 
 - ✅ 관리자/일반 API 분리 구조 (`admin/`, `api/`)
-- ✅ @Crud 데코레이터로 80% 코드 감소
+- ✅ @CrudEntity 데코레이터로 Service 레이어 90% 코드 감소 (50줄 → 5줄)
+- ✅ 재귀적 직렬화로 민감 정보 자동 제외 (password 등)
 - ✅ JSON:API 1.1 완전 준수
 - ✅ 테스트 파일 체계화 (`test/unit/`, `test/e2e/`)
 - ✅ CrudBaseService 상속으로 자동 CRUD 구현
@@ -168,9 +170,51 @@ template-typescript-nestjs/
 
 ## 핵심 기능
 
-### 1. @Crud 데코레이터 시스템
+### 1. @Crud & @CrudEntity 데코레이터 시스템
 
-**목적**: 보일러플레이트 코드 80% 감소
+**목적**: 보일러플레이트 코드 90% 감소
+
+#### 새로운 방식: @CrudEntity (권장)
+
+```typescript
+// 1. Entity에 @CrudEntity 데코레이터 적용
+import { CrudEntity } from '../../common/crud';
+
+@CrudEntity({
+  modelName: 'user',  // Prisma 모델명 (필수)
+  serialize: {
+    exclude: ['password'],  // 응답에서 제외할 필드
+  },
+})
+export class User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;  // ❌ 응답에서 자동 제외
+  isActive: boolean;
+  createdAt: Date;
+}
+
+// 2. Service 레이어 최소화 (단 5줄)
+@Injectable()
+export class UsersService extends CrudBaseService<User> {
+  constructor(prisma: PrismaService) {
+    super(prisma, User);  // ✅ Entity 클래스만 전달
+  }
+}
+
+// 3. Controller는 기존과 동일
+@Crud({
+  only: [CrudOperation.Index, CrudOperation.Show],
+  resourceType: 'users',
+})
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+}
+```
+
+#### 기존 방식: Controller + Service 설정 (호환성 유지)
 
 ```typescript
 import { Controller } from '@nestjs/common';
@@ -214,6 +258,8 @@ export class UsersController {
 
 **지원 기능**:
 
+- ✅ **@CrudEntity 데코레이터** - Entity 중심 설계로 Service 레이어 코드 90% 감소
+- ✅ **재귀적 직렬화** - 관계 데이터의 민감 정보 자동 제외 (password, apiKey 등)
 - ✅ 13가지 필터 연산자 (eq, ne, gt, gte, lt, lte, like, ilike, in, nin, between, isNull, isNotNull)
 - ✅ Sparse Fieldsets (`?fields[users]=name,email`)
 - ✅ Sorting (`?sort=-createdAt,name`)
@@ -221,7 +267,10 @@ export class UsersController {
 - ✅ 관계 포함 (`?include=posts,profile`)
 - ✅ N+1 쿼리 자동 최적화
 
-📚 **자세한 내용**: [docs/CRUD_DECORATOR_GUIDE.md](./docs/CRUD_DECORATOR_GUIDE.md)
+📚 **자세한 내용**:
+- [docs/CRUD_ENTITY_DECORATOR.md](./docs/CRUD_ENTITY_DECORATOR.md) - @CrudEntity 완전 가이드
+- [docs/RECURSIVE_SERIALIZATION.md](./docs/RECURSIVE_SERIALIZATION.md) - 재귀적 직렬화 가이드
+- [docs/CRUD_DECORATOR_GUIDE.md](./docs/CRUD_DECORATOR_GUIDE.md) - @Crud 데코레이터 가이드
 
 ### 2. JSON:API 1.1 완전 준수
 
