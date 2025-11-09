@@ -23,9 +23,7 @@ export class UsersService extends CrudBaseService<User> {
       performance: {
         query: { eagerLoad: true }, // N+1 쿼리 자동 최적화
       },
-      serialize: {
-        exclude: [], // TODO: 응답에서 제외할 필드 설정 (예: ['password'])
-      },
+      // 직렬화는 user.serializer.ts에서 관리 (파일 기반 Serializer 사용)
     });
   }
 

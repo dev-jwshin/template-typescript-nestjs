@@ -4,9 +4,7 @@ import { PrismaQueryBuilder } from '../builders';
 import { CrudConfig, CrudOperation, FilterOperator } from '../types';
 import { PaginatedResponse } from '../../dto/jsonapi-query.dto';
 import { ServiceRegistry } from '../registry/service-registry';
-import { getCrudEntityMetadata } from '../decorators/crud-entity.decorator';
 import { SerializerRegistry } from '../serializers/serializer-registry';
-import { BaseSerializer } from '../serializers/base.serializer';
 
 /**
  * CRUD 기본 서비스
@@ -14,7 +12,7 @@ import { BaseSerializer } from '../serializers/base.serializer';
  * N+1 쿼리 최적화 및 표준 CRUD 작업을 제공하는 베이스 서비스입니다.
  * 다른 서비스에서 상속받아 사용합니다.
  *
- * 사용 예시 (기존 방식 - config 전달):
+ * @example
  * ```typescript
  * @Injectable()
  * export class UsersService extends CrudBaseService<User> {
@@ -27,28 +25,6 @@ import { BaseSerializer } from '../serializers/base.serializer';
  *   }
  * }
  * ```
- *
- * 사용 예시 (새 방식 - @CrudEntity 데코레이터):
- * ```typescript
- * @CrudEntity({
- *   modelName: 'user',
- *   allowedIncludes: ['profile', 'roles'],
- *   allowedFilters: { name: ['eq', 'like'], isActive: ['eq'] },
- *   performance: { query: { eagerLoad: true } }
- * })
- * export class User {
- *   id: string;
- *   name: string;
- *   email: string;
- * }
- *
- * @Injectable()
- * export class UsersService extends CrudBaseService<User> {
- *   constructor(prisma: PrismaService) {
- *     super(prisma, User);  // Entity 클래스만 전달
- *   }
- * }
- * ```
  */
 @Injectable()
 export abstract class CrudBaseService<T = any> {
@@ -56,56 +32,22 @@ export abstract class CrudBaseService<T = any> {
 
   /**
    * @param prisma Prisma 서비스
-   * @param modelNameOrEntity Prisma 모델 이름 (소문자) 또는 @CrudEntity가 적용된 Entity 클래스
-   * @param config CRUD 설정 (선택사항, Entity 메타데이터가 우선됨)
+   * @param modelName Prisma 모델 이름 (소문자, 예: 'user', 'post')
+   * @param config CRUD 설정
    */
   constructor(
     protected readonly prisma: PrismaService,
-    modelNameOrEntity: string | (new (...args: any[]) => T),
+    modelName: string,
     config?: {
       allowedIncludes?: string[];
       allowedFilters?: Record<string, FilterOperator[]>;
       allowedSorts?: string[];
       performance?: { query?: { eagerLoad?: boolean } };
-      serialize?: {
-        exclude?: string[];
-        transform?: (data: any) => any;
-        relations?: Record<string, string>;
-      };
     },
   ) {
     this.queryBuilder = new PrismaQueryBuilder();
-
-    // modelName 결정
-    let finalModelName: string;
-    let entityMetadata: any = undefined;
-
-    if (typeof modelNameOrEntity === 'string') {
-      // 기존 방식: 문자열 모델명 전달
-      finalModelName = modelNameOrEntity;
-      this.config = config || {};
-    } else {
-      // 새 방식: Entity 클래스 전달
-      entityMetadata = getCrudEntityMetadata(modelNameOrEntity);
-
-      if (!entityMetadata || !entityMetadata.modelName) {
-        throw new Error(
-          `@CrudEntity 데코레이터가 ${modelNameOrEntity.name}에 적용되지 않았습니다. ` +
-            `@CrudEntity({ modelName: '...' })를 Entity 클래스에 추가하거나, ` +
-            `super(prisma, 'modelName', config)처럼 문자열 모델명을 전달하세요.`,
-        );
-      }
-
-      finalModelName = entityMetadata.modelName;
-
-      // Entity 메타데이터를 config로 사용 (기존 config와 병합)
-      this.config = {
-        ...entityMetadata,
-        ...config, // 전달된 config가 우선순위 높음
-      };
-    }
-
-    this.modelName = finalModelName;
+    this.modelName = modelName;
+    this.config = config || {};
 
     // 서비스 레지스트리에 자동 등록
     ServiceRegistry.register(this.modelName, this);
@@ -118,11 +60,6 @@ export abstract class CrudBaseService<T = any> {
     allowedFilters?: Record<string, FilterOperator[]>;
     allowedSorts?: string[];
     performance?: { query?: { eagerLoad?: boolean } };
-    serialize?: {
-      exclude?: string[];
-      transform?: (data: any) => any;
-      relations?: Record<string, string>;
-    };
   };
 
   /**
@@ -196,9 +133,7 @@ export abstract class CrudBaseService<T = any> {
 
     // N+1 최적화: Eager Loading
     if (this.config.performance?.query?.eagerLoad && this.config.allowedIncludes) {
-      const include = this.queryBuilder.buildIncludeClause(
-        this.config.allowedIncludes,
-      );
+      const include = this.queryBuilder.buildIncludeClause(this.config.allowedIncludes);
       if (include && Object.keys(include).length > 0) {
         query.include = include;
       }
@@ -215,9 +150,7 @@ export abstract class CrudBaseService<T = any> {
     const entity = await this.model.findUnique(query);
 
     if (!entity) {
-      throw new NotFoundException(
-        `${this.modelName} ID ${id}를 찾을 수 없습니다.`,
-      );
+      throw new NotFoundException(`${this.modelName} ID ${id}를 찾을 수 없습니다.`);
     }
 
     return this.serialize(entity);
@@ -249,9 +182,7 @@ export abstract class CrudBaseService<T = any> {
     // 존재 여부 확인
     const existingEntity = await this.model.findUnique({ where: { id } });
     if (!existingEntity) {
-      throw new NotFoundException(
-        `${this.modelName} ID ${id}를 찾을 수 없습니다.`,
-      );
+      throw new NotFoundException(`${this.modelName} ID ${id}를 찾을 수 없습니다.`);
     }
 
     const entity = await this.model.update({
@@ -273,9 +204,7 @@ export abstract class CrudBaseService<T = any> {
     // 존재 여부 확인
     const existingEntity = await this.model.findUnique({ where: { id } });
     if (!existingEntity) {
-      throw new NotFoundException(
-        `${this.modelName} ID ${id}를 찾을 수 없습니다.`,
-      );
+      throw new NotFoundException(`${this.modelName} ID ${id}를 찾을 수 없습니다.`);
     }
 
     await this.model.delete({
@@ -288,11 +217,10 @@ export abstract class CrudBaseService<T = any> {
   }
 
   /**
-   * 엔티티 직렬화 (민감한 필드 제거 + 재귀적 관계 직렬화)
+   * 엔티티 직렬화 (파일 기반 Serializer 사용)
    *
-   * 우선순위:
-   * 1. 파일 기반 Serializer (SerializerRegistry에서 조회)
-   * 2. Config 기반 직렬화 (기존 방식)
+   * {module}.serializer.ts 파일을 통해 직렬화를 수행합니다.
+   * Serializer가 등록되지 않은 경우 원본 데이터를 반환합니다.
    *
    * @param entity 원본 엔티티
    * @returns 직렬화된 엔티티
@@ -307,57 +235,15 @@ export abstract class CrudBaseService<T = any> {
       return entity.map((item) => this.serialize(item)) as any;
     }
 
-    // ✅ 우선순위 1: 파일 기반 Serializer 사용 (SerializerRegistry)
+    // 파일 기반 Serializer 사용 (SerializerRegistry)
     const fileBasedSerializer = SerializerRegistry.get(this.modelName);
     if (fileBasedSerializer) {
       const serializerRegistry = SerializerRegistry.getAll();
       return fileBasedSerializer.serialize(entity, serializerRegistry) as T;
     }
 
-    // ✅ 우선순위 2: Config 기반 직렬화 (기존 방식)
-    // 1. 최상위 필드 제거
-    let serialized = { ...entity };
-
-    if (this.config.serialize?.exclude) {
-      this.config.serialize.exclude.forEach((field) => {
-        delete serialized[field];
-      });
-    }
-
-    // 2. 재귀적 관계 직렬화 (ServiceRegistry 사용)
-    if (this.config.serialize?.relations) {
-      Object.entries(this.config.serialize.relations).forEach(
-        ([relationField, modelName]) => {
-          const relationData = serialized[relationField];
-
-          // 관계 데이터가 존재하는 경우에만 처리
-          if (relationData !== undefined && relationData !== null) {
-            // 관계 서비스 조회
-            const relationService = ServiceRegistry.get(modelName);
-
-            if (relationService && typeof relationService.serialize === 'function') {
-              // 배열인 경우
-              if (Array.isArray(relationData)) {
-                serialized[relationField] = relationData.map((item) =>
-                  relationService.serialize(item),
-                );
-              }
-              // 단일 객체인 경우
-              else if (typeof relationData === 'object') {
-                serialized[relationField] = relationService.serialize(relationData);
-              }
-            }
-          }
-        },
-      );
-    }
-
-    // 3. 커스텀 변환 함수 적용
-    if (this.config.serialize?.transform) {
-      serialized = this.config.serialize.transform(serialized);
-    }
-
-    return serialized;
+    // Serializer가 등록되지 않은 경우 원본 반환
+    return entity;
   }
 
   /**

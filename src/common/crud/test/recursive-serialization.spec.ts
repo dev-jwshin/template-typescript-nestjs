@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CrudBaseService, ServiceRegistry } from '../index';
 import { PrismaService } from '../../../database/prisma.service';
+import { BaseSerializer } from '../serializers/base.serializer';
+import { SerializerRegistry } from '../serializers/serializer-registry';
 
 /**
  * 재귀적 직렬화 테스트
  *
- * include로 가져온 관계 데이터에도 각 모델의 serialize.exclude 설정이
+ * include로 가져온 관계 데이터에도 각 모델의 Serializer가
  * 올바르게 적용되는지 검증합니다.
  */
 describe('Recursive Serialization', () => {
@@ -22,16 +24,29 @@ describe('Recursive Serialization', () => {
     comment: {
       findUnique: jest.fn(),
     },
+    postNoRel: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+    },
   };
+
+  // Comment Serializer
+  class CommentSerializer extends BaseSerializer<any> {
+    protected excludeFields = ['authorEmail', 'authorIp'];
+  }
+
+  // Post Serializer
+  class PostSerializer extends BaseSerializer<any> {
+    protected excludeFields = ['isDraft'];
+    protected relations = {
+      comments: 'comment',
+    };
+  }
 
   // Comment 테스트 서비스
   class CommentsTestService extends CrudBaseService<any> {
     constructor(prisma: PrismaService) {
-      super(prisma, 'comment', {
-        serialize: {
-          exclude: ['authorEmail', 'authorIp'],
-        },
-      });
+      super(prisma, 'comment', {});
     }
   }
 
@@ -40,12 +55,6 @@ describe('Recursive Serialization', () => {
     constructor(prisma: PrismaService) {
       super(prisma, 'post', {
         allowedIncludes: ['comments'],
-        serialize: {
-          exclude: ['isDraft'],
-          relations: {
-            comments: 'comment', // comments 관계 → comment 서비스 사용
-          },
-        },
       });
     }
   }
@@ -53,23 +62,37 @@ describe('Recursive Serialization', () => {
   beforeEach(async () => {
     // ServiceRegistry 초기화
     ServiceRegistry.clear();
+    SerializerRegistry.clear();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         { provide: PrismaService, useValue: mockPrisma },
-        CommentsTestService,
-        PostsTestService,
+        {
+          provide: CommentsTestService,
+          useFactory: (prisma: PrismaService) => new CommentsTestService(prisma),
+          inject: [PrismaService],
+        },
+        {
+          provide: PostsTestService,
+          useFactory: (prisma: PrismaService) => new PostsTestService(prisma),
+          inject: [PrismaService],
+        },
       ],
     }).compile();
 
     prisma = module.get<PrismaService>(PrismaService);
     commentsService = module.get<CommentsTestService>(CommentsTestService);
     postsService = module.get<PostsTestService>(PostsTestService);
+
+    // Serializer 등록
+    SerializerRegistry.register('comment', new CommentSerializer());
+    SerializerRegistry.register('post', new PostSerializer());
   });
 
   afterEach(() => {
     jest.clearAllMocks();
     ServiceRegistry.clear();
+    SerializerRegistry.clear();
   });
 
   describe('단일 관계 직렬화', () => {
@@ -196,27 +219,26 @@ describe('Recursive Serialization', () => {
   });
 
   describe('관계 설정이 없는 경우', () => {
-    it('serialize.relations 미설정 시 관계 데이터는 원본 그대로 반환', async () => {
-      // serialize.relations 없이 서비스 생성
-      class PostsNoRelationsService extends CrudBaseService<any> {
+    it('Serializer 미등록 시 관계 데이터는 원본 그대로 반환', async () => {
+      // Serializer 없이 서비스 생성
+      class PostsNoSerializerService extends CrudBaseService<any> {
         constructor(prisma: PrismaService) {
-          super(prisma, 'postNoRel', {
-            serialize: {
-              exclude: ['isDraft'],
-              // relations 설정 없음
-            },
-          });
+          super(prisma, 'postNoRel', {});
         }
       }
 
       const module = await Test.createTestingModule({
         providers: [
           { provide: PrismaService, useValue: mockPrisma },
-          PostsNoRelationsService,
+          {
+            provide: PostsNoSerializerService,
+            useFactory: (prisma: PrismaService) => new PostsNoSerializerService(prisma),
+            inject: [PrismaService],
+          },
         ],
       }).compile();
 
-      const service = module.get<PostsNoRelationsService>(PostsNoRelationsService);
+      const service = module.get<PostsNoSerializerService>(PostsNoSerializerService);
 
       const mockData = {
         id: 'post-1',
@@ -229,14 +251,12 @@ describe('Recursive Serialization', () => {
         ],
       };
 
-      mockPrisma.post.findUnique.mockResolvedValue(mockData);
+      mockPrisma.postNoRel.findUnique.mockResolvedValue(mockData);
 
       const result = await service.findOne('post-1');
 
-      // Post의 isDraft는 제외되지만
-      expect(result).not.toHaveProperty('isDraft');
-
-      // Comments는 원본 그대로 (authorEmail 포함)
+      // Serializer가 없으므로 원본 그대로 반환
+      expect(result).toHaveProperty('isDraft', true);
       expect(result.comments[0]).toHaveProperty('authorEmail', 'test@example.com');
     });
   });
