@@ -135,7 +135,7 @@ template-typescript-nestjs/
 │
 ├── 📂 interfaces/                     # 타입 인터페이스 (현재 비어있음)
 │
-├── 📂 test/                           # 테스트 파일 (NEW ⭐)
+├── 📂 test/                           # 테스트 파일
 │   ├── 📂 unit/                       # 유닛 테스트
 │   └── 📂 e2e/                        # E2E 테스트
 │
