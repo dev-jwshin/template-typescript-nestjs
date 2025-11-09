@@ -441,10 +441,6 @@ feat: 사용자 인증 기능 추가
 - JWT 기반 인증 구현
 - 로그인/로그아웃 엔드포인트 추가
 - AuthGuard 및 AuthService 구현
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ---
