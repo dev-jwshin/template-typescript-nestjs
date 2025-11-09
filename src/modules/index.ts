@@ -9,7 +9,7 @@
  * - pnpm generate:modules
  * - pnpm prebuild (빌드 전 자동 실행)
  *
- * 마지막 생성 시간: 2025-11-09T06:43:14.449Z
+ * 마지막 생성 시간: 2025-11-09T07:47:09.159Z
  */
 
 // Core 모듈
@@ -37,5 +37,5 @@ export const ALL_MODULES = [
   HealthModule,
 
   // Feature
-  ProductsModule,
+  ProductsModule
 ];

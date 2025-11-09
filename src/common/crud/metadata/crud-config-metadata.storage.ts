@@ -11,25 +11,36 @@ import { CrudConfig } from '../types/crud-config.interface';
  * - Controller별 CrudConfig 저장
  * - Service에서 설정 조회
  * - 설정 중복 방지 (단일 진실 공급원)
+ * - Convention-over-Configuration: Service 이름 기반 자동 조회
  *
  * @example
  * ```typescript
- * // 1. @Crud 데코레이터에서 저장
+ * // 방법 1: DI 기반 (기존 방식, 하위 호환성)
  * @Crud({
  *   allowedFilters: { name: ['eq'] },
  *   serializer: ProductSerializer,
  * })
  * class ProductsController {}
  *
- * // CrudConfigMetadataStorage.set(ProductsController, config)
- *
- * // 2. Service에서 주입받음
  * class ProductsService extends CrudBaseService {
  *   constructor(
  *     prisma: PrismaService,
  *     @Inject(CRUD_CONFIG) config: CrudConfig,
  *   ) {
  *     super(prisma, 'product', config);
+ *   }
+ * }
+ *
+ * // 방법 2: Convention-over-Configuration (신규 방식)
+ * @Crud({
+ *   allowedFilters: { name: ['eq'] },
+ *   serializer: ProductSerializer,
+ * })
+ * class ProductsController {}
+ *
+ * class ProductsService extends CrudBaseService {
+ *   constructor(prisma: PrismaService) {
+ *     super(prisma, 'product');  // ✨ config 자동 조회!
  *   }
  * }
  * ```
@@ -41,6 +52,15 @@ export class CrudConfigMetadataStorage {
   private static configs = new Map<Function, CrudConfig>();
 
   /**
+   * ServiceName → ControllerClass 매핑 (Convention-over-Configuration)
+   *
+   * @example
+   * 'ProductsService' → ProductsController
+   * 'UsersService' → UsersController
+   */
+  private static serviceToController = new Map<string, Function>();
+
+  /**
    * CrudConfig 저장
    *
    * @param target Controller 클래스
@@ -48,6 +68,12 @@ export class CrudConfigMetadataStorage {
    */
   static set(target: Function, config: CrudConfig): void {
     this.configs.set(target, config);
+
+    // Convention-over-Configuration: ServiceName 자동 매핑
+    // 예: ProductsController → ProductsService
+    const controllerName = target.name; // "ProductsController"
+    const serviceName = controllerName.replace('Controller', 'Service'); // "ProductsService"
+    this.serviceToController.set(serviceName, target);
   }
 
   /**
@@ -93,5 +119,41 @@ export class CrudConfigMetadataStorage {
    */
   static clear(): void {
     this.configs.clear();
+    this.serviceToController.clear();
+  }
+
+  /**
+   * ServiceName으로 CrudConfig 조회 (Convention-over-Configuration)
+   *
+   * @param serviceName Service 클래스 이름 (예: 'ProductsService')
+   * @returns CRUD 설정 또는 undefined
+   *
+   * @example
+   * ```typescript
+   * // Service에서 자동 조회
+   * class ProductsService extends CrudBaseService {
+   *   constructor(prisma: PrismaService) {
+   *     super(prisma, 'product');
+   *     // → 내부적으로 CrudConfigMetadataStorage.getByServiceName('ProductsService') 호출
+   *   }
+   * }
+   * ```
+   */
+  static getByServiceName(serviceName: string): CrudConfig | undefined {
+    const controllerClass = this.serviceToController.get(serviceName);
+    if (!controllerClass) {
+      return undefined;
+    }
+    return this.configs.get(controllerClass);
+  }
+
+  /**
+   * ServiceName으로 Controller 조회 (디버깅 용도)
+   *
+   * @param serviceName Service 클래스 이름
+   * @returns Controller 클래스 또는 undefined
+   */
+  static getControllerByServiceName(serviceName: string): Function | undefined {
+    return this.serviceToController.get(serviceName);
   }
 }

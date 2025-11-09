@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CrudOperation } from '../types/crud-operation.enum';
+import 'reflect-metadata';
 import { CrudConfig } from '../types/crud-config.interface';
 import { CrudHookMetadataStorage } from '../metadata/crud-hook-metadata.storage';
 import { CrudHookType } from '../types/crud-hook.interface';
@@ -205,6 +206,12 @@ export class CrudRouteFactory {
     // 프로토타입에 메서드 먼저 추가
     target.index = handler;
 
+    // 파라미터 타입 메타데이터 설정 (NestJS가 파라미터 주입을 위해 필요)
+    Reflect.defineMetadata('design:paramtypes', [Object], target, 'index');
+
+    // @Query() 데코레이터 메타데이터 적용 (0번째 파라미터에)
+    Query()(target, 'index', 0);
+
     // 데코레이터 적용
     const descriptor = Object.getOwnPropertyDescriptor(target, 'index');
     if (!descriptor) {
@@ -258,6 +265,15 @@ export class CrudRouteFactory {
 
     // 프로토타입에 메서드 먼저 추가
     target.show = handler;
+
+    // 파라미터 타입 메타데이터 설정
+    Reflect.defineMetadata('design:paramtypes', [String, Object], target, 'show');
+
+    // @Param('id') 데코레이터 메타데이터 적용 (0번째 파라미터)
+    Param('id')(target, 'show', 0);
+
+    // @Query() 데코레이터 메타데이터 적용 (1번째 파라미터)
+    Query()(target, 'show', 1);
 
     // 데코레이터 적용
     const descriptor = Object.getOwnPropertyDescriptor(target, 'show');
@@ -324,6 +340,12 @@ export class CrudRouteFactory {
 
     // 프로토타입에 메서드 먼저 추가
     target.create = handler;
+
+    // 파라미터 타입 메타데이터 설정
+    Reflect.defineMetadata('design:paramtypes', [Object], target, 'create');
+
+    // @Body() 데코레이터 메타데이터 적용 (0번째 파라미터)
+    Body()(target, 'create', 0);
 
     // 데코레이터 적용
     const descriptor = Object.getOwnPropertyDescriptor(target, 'create');
@@ -392,6 +414,15 @@ export class CrudRouteFactory {
     // 프로토타입에 메서드 먼저 추가
     target.update = handler;
 
+    // 파라미터 타입 메타데이터 설정
+    Reflect.defineMetadata('design:paramtypes', [String, Object], target, 'update');
+
+    // @Param('id') 데코레이터 메타데이터 적용 (0번째 파라미터)
+    Param('id')(target, 'update', 0);
+
+    // @Body() 데코레이터 메타데이터 적용 (1번째 파라미터)
+    Body()(target, 'update', 1);
+
     // 데코레이터 적용
     const descriptor = Object.getOwnPropertyDescriptor(target, 'update');
     if (!descriptor) {
@@ -438,6 +469,12 @@ export class CrudRouteFactory {
 
     // 프로토타입에 메서드 먼저 추가
     target.delete = handler;
+
+    // 파라미터 타입 메타데이터 설정
+    Reflect.defineMetadata('design:paramtypes', [String], target, 'delete');
+
+    // @Param('id') 데코레이터 메타데이터 적용 (0번째 파라미터)
+    Param('id')(target, 'delete', 0);
 
     // 데코레이터 적용
     const descriptor = Object.getOwnPropertyDescriptor(target, 'delete');

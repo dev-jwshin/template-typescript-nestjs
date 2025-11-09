@@ -5,6 +5,7 @@ import { CrudConfig, FilterOperator } from '../types';
 import { PaginatedResponse } from '../../dto/jsonapi-query.dto';
 import { ServiceRegistry } from '../registry/service-registry';
 import { SerializerRegistry } from '../serializers/serializer-registry';
+import { CrudConfigMetadataStorage } from '../metadata/crud-config-metadata.storage';
 
 /**
  * CRUD 기본 서비스
@@ -56,7 +57,23 @@ export abstract class CrudBaseService<T = any> {
   /**
    * @param prisma Prisma 서비스
    * @param modelName Prisma 모델 이름 (소문자, 예: 'user', 'post')
-   * @param config CRUD 설정 (@Inject(CRUD_CONFIG)로 주입받음)
+   * @param config CRUD 설정 (선택사항, 미제공 시 Convention-over-Configuration으로 자동 조회)
+   *
+   * @example
+   * ```typescript
+   * // 방법 1: DI 기반 (기존 방식, 하위 호환성)
+   * constructor(
+   *   prisma: PrismaService,
+   *   @Inject(CRUD_CONFIG) config: CrudConfig,
+   * ) {
+   *   super(prisma, 'product', config);
+   * }
+   *
+   * // 방법 2: Convention-over-Configuration (권장 ⭐)
+   * constructor(prisma: PrismaService) {
+   *   super(prisma, 'product');  // ✨ config 자동 조회!
+   * }
+   * ```
    */
   constructor(
     protected readonly prisma: PrismaService,
@@ -79,20 +96,34 @@ export abstract class CrudBaseService<T = any> {
       },
     };
 
+    // Convention-over-Configuration: config가 없으면 자동 조회
+    let resolvedConfig = config;
+    if (!resolvedConfig) {
+      resolvedConfig = this.loadConfigByConvention();
+    }
+
+    // 최소한의 안전한 설정 (config 조회 실패 시에도 동작하도록)
+    const safeConfig = resolvedConfig || {
+      only: [], // 빈 배열이지만 undefined 방지
+      allowedFilters: {},
+      allowedSorts: [],
+      allowedIncludes: [],
+    };
+
     // 사용자 설정으로 기본값 override
     this.config = {
       ...defaultConfig,
-      ...config,
+      ...safeConfig,
       pagination: {
         ...defaultConfig.pagination,
-        ...config?.pagination,
+        ...safeConfig.pagination,
       },
       performance: {
         ...defaultConfig.performance,
-        ...config?.performance,
+        ...safeConfig.performance,
         query: {
           ...defaultConfig.performance?.query,
-          ...config?.performance?.query,
+          ...safeConfig.performance?.query,
         },
       },
     } as CrudConfig;
@@ -102,6 +133,44 @@ export abstract class CrudBaseService<T = any> {
 
     // Serializer 자동 등록
     this.autoRegisterSerializer();
+  }
+
+  /**
+   * Convention-over-Configuration으로 CrudConfig 자동 조회
+   *
+   * @description
+   * Service 이름에서 Controller 이름을 추론하여 @Crud 설정을 자동 조회합니다.
+   * 예: ProductsService → ProductsController → CrudConfig
+   *
+   * @returns CrudConfig 또는 undefined
+   *
+   * @example
+   * ```typescript
+   * // ProductsService → ProductsController의 @Crud 설정 자동 조회
+   * class ProductsService extends CrudBaseService<Product> {
+   *   constructor(prisma: PrismaService) {
+   *     super(prisma, 'product');  // ✨ config 자동 조회!
+   *   }
+   * }
+   * ```
+   */
+  private loadConfigByConvention(): CrudConfig | undefined {
+    const serviceName = this.constructor.name; // "ProductsService"
+    const config = CrudConfigMetadataStorage.getByServiceName(serviceName);
+
+    if (config) {
+      console.log(
+        `[CrudBaseService] Config 자동 조회 성공: ${serviceName} → ${config.resourceType || this.modelName}`,
+      );
+    } else {
+      console.warn(
+        `[CrudBaseService] Config 자동 조회 실패: ${serviceName}. ` +
+          `Controller에 @Crud 데코레이터가 적용되지 않았거나 명명 규칙을 따르지 않습니다. ` +
+          `(기대: ${serviceName.replace('Service', 'Controller')})`,
+      );
+    }
+
+    return config;
   }
 
   /**
