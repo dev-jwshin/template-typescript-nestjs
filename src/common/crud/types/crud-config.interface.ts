@@ -137,4 +137,17 @@ export interface CrudConfig {
    * CRUD 동작을 확장할 플러그인 목록입니다.
    */
   plugins?: CrudPlugin[];
+
+  /**
+   * Serializer 클래스 (선택)
+   *
+   * 엔티티 직렬화 규칙을 정의하는 Serializer 클래스입니다.
+   * Class 또는 Instance를 전달할 수 있습니다.
+   * - Class 전달: Provider에서 자동으로 인스턴스화
+   * - Instance 전달: 즉시 SerializerRegistry에 등록
+   *
+   * @see BaseSerializer - Serializer 베이스 클래스
+   * @see SerializerRegistry - 전역 Serializer 레지스트리
+   */
+  serializer?: any;
 }
