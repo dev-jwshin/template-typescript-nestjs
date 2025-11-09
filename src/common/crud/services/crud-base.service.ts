@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { PrismaQueryBuilder } from '../builders';
-import { CrudConfig, CrudOperation, FilterOperator } from '../types';
+import { CrudConfig, FilterOperator } from '../types';
 import { PaginatedResponse } from '../../dto/jsonapi-query.dto';
 import { ServiceRegistry } from '../registry/service-registry';
 import { SerializerRegistry } from '../serializers/serializer-registry';
@@ -14,16 +14,39 @@ import { SerializerRegistry } from '../serializers/serializer-registry';
  *
  * @example
  * ```typescript
+ * // Controller에서 @Crud 데코레이터로 설정 정의
+ * @Crud({
+ *   only: [CrudOperation.Index, CrudOperation.Show, CrudOperation.Create],
+ *   resourceType: 'users',
+ *   allowedIncludes: ['profile', 'roles'],
+ *   allowedFilters: { name: ['eq', 'like'], isActive: ['eq'] },
+ *   performance: { query: { eagerLoad: true } }
+ * })
+ * @Controller('users')
+ * export class UsersController {
+ *   constructor(private readonly usersService: UsersService) {}
+ * }
+ *
+ * // Service에서 DI로 설정 주입받기
  * @Injectable()
  * export class UsersService extends CrudBaseService<User> {
- *   constructor(prisma: PrismaService) {
- *     super(prisma, 'user', {
- *       allowedIncludes: ['profile', 'roles'],
- *       allowedFilters: { name: ['eq', 'like'], isActive: ['eq'] },
- *       performance: { query: { eagerLoad: true } }
- *     });
+ *   constructor(
+ *     prisma: PrismaService,
+ *     @Inject(CRUD_CONFIG) config: CrudConfig,
+ *   ) {
+ *     super(prisma, 'user', config);
  *   }
  * }
+ *
+ * // Module에서 Provider 등록
+ * @Module({
+ *   controllers: [UsersController],
+ *   providers: [
+ *     UsersService,
+ *     createCrudConfigProvider(UsersController),
+ *   ],
+ * })
+ * export class UsersModule {}
  * ```
  */
 @Injectable()
@@ -33,34 +56,78 @@ export abstract class CrudBaseService<T = any> {
   /**
    * @param prisma Prisma 서비스
    * @param modelName Prisma 모델 이름 (소문자, 예: 'user', 'post')
-   * @param config CRUD 설정
+   * @param config CRUD 설정 (@Inject(CRUD_CONFIG)로 주입받음)
    */
   constructor(
     protected readonly prisma: PrismaService,
     modelName: string,
-    config?: {
-      allowedIncludes?: string[];
-      allowedFilters?: Record<string, FilterOperator[]>;
-      allowedSorts?: string[];
-      performance?: { query?: { eagerLoad?: boolean } };
-    },
+    config?: CrudConfig,
   ) {
     this.queryBuilder = new PrismaQueryBuilder();
     this.modelName = modelName;
-    this.config = config || {};
+    this.config = (config || {}) as CrudConfig;
 
     // 서비스 레지스트리에 자동 등록
     ServiceRegistry.register(this.modelName, this);
+
+    // Serializer 자동 등록
+    this.autoRegisterSerializer();
+  }
+
+  /**
+   * Serializer 자동 등록
+   *
+   * @description
+   * 다음 순서로 Serializer를 찾아 SerializerRegistry에 자동 등록합니다:
+   * 1. config.serializer가 제공된 경우 해당 Serializer 사용
+   * 2. 이미 등록된 Serializer가 있으면 건너뜀
+   *
+   * @remarks
+   * - @Crud 데코레이터에서 serializer를 전달하면 자동으로 인스턴스화하여 등록
+   * - 모듈의 onModuleInit()에서 수동 등록도 여전히 가능 (하위 호환성)
+   *
+   * @example
+   * ```typescript
+   * // 방법 1: @Crud 데코레이터에서 Serializer 전달 (권장)
+   * @Crud({
+   *   only: [CrudOperation.Index, CrudOperation.Show],
+   *   resourceType: 'users',
+   *   serializer: UserSerializer,  // ← Class 전달, Provider에서 인스턴스화됨
+   * })
+   * @Controller('users')
+   * export class UsersController {}
+   *
+   * // 방법 2: 모듈에서 수동 등록 (기존 방식, 여전히 작동)
+   * // users.module.ts
+   * onModuleInit() {
+   *   SerializerRegistry.register('user', new UserSerializer());
+   * }
+   * ```
+   */
+  private autoRegisterSerializer(): void {
+    // 1. config.serializer가 제공된 경우
+    if (this.config.serializer) {
+      SerializerRegistry.register(this.modelName, this.config.serializer);
+      console.log(`[CrudBaseService] Serializer 자동 등록 완료: ${this.modelName}`);
+      return;
+    }
+
+    // 2. 이미 등록된 Serializer가 있으면 건너뜀
+    if (SerializerRegistry.has(this.modelName)) {
+      console.log(`[CrudBaseService] Serializer 이미 등록됨: ${this.modelName}`);
+      return;
+    }
+
+    // 3. Serializer가 없으면 경고 (선택사항)
+    console.warn(
+      `[CrudBaseService] Serializer가 등록되지 않음: ${this.modelName}. ` +
+        `config.serializer를 전달하거나 모듈의 onModuleInit()에서 수동 등록하세요.`,
+    );
   }
 
   // modelName과 config를 readonly로 변경
   protected readonly modelName: string;
-  protected readonly config: {
-    allowedIncludes?: string[];
-    allowedFilters?: Record<string, FilterOperator[]>;
-    allowedSorts?: string[];
-    performance?: { query?: { eagerLoad?: boolean } };
-  };
+  protected readonly config: CrudConfig;
 
   /**
    * Prisma 모델 접근자
