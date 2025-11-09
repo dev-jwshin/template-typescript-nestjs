@@ -1,6 +1,7 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as compression from 'compression';
 import { AppModule } from './app.module';
 import { JsonApiExceptionFilter } from './common/filters/jsonapi-exception.filter';
 import { I18nValidationPipe } from './common/pipes/i18n-validation.pipe';
@@ -23,6 +24,35 @@ async function bootstrap() {
     }
     next();
   });
+
+  // Gzip 압축 설정 (응답 크기 40-70% 감소)
+  const compressionEnabled = process.env.COMPRESSION_ENABLED !== 'false'; // 기본값: true
+  if (compressionEnabled) {
+    const compressionLevel = parseInt(process.env.COMPRESSION_LEVEL || '6', 10);
+    const compressionThreshold = parseInt(process.env.COMPRESSION_THRESHOLD || '1024', 10);
+
+    app.use(
+      compression({
+        // x-no-compression 헤더가 있으면 압축 스킵
+        filter: (req, res) => {
+          if (req.headers['x-no-compression']) {
+            return false;
+          }
+          return compression.filter(req, res);
+        },
+        // 압축 레벨 (1-9, 환경 변수로 제어)
+        // 1 = 최소 압축/최고 속도, 9 = 최대 압축/최저 속도
+        level: compressionLevel,
+        // 최소 압축 크기 (환경 변수로 제어)
+        threshold: compressionThreshold,
+      }),
+    );
+    console.log(
+      `✅ Gzip compression enabled (level: ${compressionLevel}, threshold: ${compressionThreshold} bytes)`,
+    );
+  } else {
+    console.log('⚠️  Gzip compression is disabled');
+  }
 
   // JSON:API 에러 필터 글로벌 적용
   app.useGlobalFilters(new JsonApiExceptionFilter());
