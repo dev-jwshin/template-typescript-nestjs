@@ -7,9 +7,11 @@
   "license": "MIT",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
+    "prebuild": "pnpm generate:modules",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"prisma/**/*.prisma\"",
     "start": "nest start",
+    "prestart:dev": "pnpm generate:modules",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
@@ -26,7 +28,8 @@
     "prisma:seed": "ts-node prisma/seed.ts",
     "db:push": "prisma db push",
     "db:reset": "prisma migrate reset",
-    "generate:module": "ts-node scripts/generate-module.ts"
+    "generate:module": "ts-node scripts/generate-module.ts",
+    "generate:modules": "ts-node scripts/generate-module-index.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
