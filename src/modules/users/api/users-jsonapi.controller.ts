@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { Crud, CrudOperation } from '../../common/crud';
+import { UsersService } from '../users.service';
+import { Crud, CrudOperation } from '../../../common/crud';
 
 /**
  * JSON:API 전용 사용자 컨트롤러

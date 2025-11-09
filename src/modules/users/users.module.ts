@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { UsersController } from './users.controller';
-import { UsersCrudController } from './users-crud.controller';
-import { UsersJsonApiController } from './users-jsonapi.controller';
+import { UsersController } from './admin/users.controller';
+import { UsersCrudController } from './api/users-crud.controller';
+import { UsersJsonApiController } from './api/users-jsonapi.controller';
 
 /**
  * 사용자 모듈

@@ -19,19 +19,19 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
-import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
-import { JsonApiTransformInterceptor } from '../../common/interceptors/jsonapi-transform.interceptor';
-import { JsonApiResource } from '../../common/decorators/jsonapi-resource.decorator';
+import { UsersService } from '../users.service';
+import { CreateUserDto } from '../dto/create-user.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
+import { User } from '../user.entity';
+import { JsonApiTransformInterceptor } from '../../../common/interceptors/jsonapi-transform.interceptor';
+import { JsonApiResource } from '../../../common/decorators/jsonapi-resource.decorator';
 import {
   SparseFields,
   Pagination,
   Sort,
   Filter,
-} from '../../common/decorators/jsonapi-query.decorator';
-import { JsonApiValidationPipe } from '../../common/pipes/jsonapi-validation.pipe';
+} from '../../../common/decorators/jsonapi-query.decorator';
+import { JsonApiValidationPipe } from '../../../common/pipes/jsonapi-validation.pipe';
 
 /**
  * 사용자 컨트롤러 (JSON:API 1.1 스펙 적용)

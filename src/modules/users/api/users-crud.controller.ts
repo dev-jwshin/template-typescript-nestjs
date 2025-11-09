@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { Crud, CrudOperation } from '../../common/crud';
+import { UsersService } from '../users.service';
+import { Crud, CrudOperation } from '../../../common/crud';
 
 /**
  * 사용자 컨트롤러 (@Crud 데코레이터 기반)
