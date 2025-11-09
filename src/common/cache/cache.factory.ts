@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { CacheStore } from './interfaces/cache-store.interface';
 import { MemoryStore } from './stores/memory.store';
 import { RedisStore } from './stores/redis.store';
@@ -9,6 +10,64 @@ import { RedisStore } from './stores/redis.store';
  * 팩토리 패턴(Factory Pattern)을 적용하여 객체 생성 로직을 캡슐화합니다.
  */
 export class CacheFactory {
+  /**
+   * ConfigService를 사용한 캐시 저장소 생성 (권장)
+   *
+   * @param configService NestJS ConfigService
+   * @returns CacheStore 인스턴스 (Memory 또는 Redis)
+   */
+  static async createFromConfig(
+    configService: ConfigService,
+  ): Promise<CacheStore> {
+    const driver = configService.get<string>('cache.driver', 'memory');
+
+    console.log(`[CacheFactory] 캐시 드라이버: ${driver}`);
+
+    if (driver === 'redis') {
+      return this.createRedisStoreFromConfig(configService);
+    }
+
+    return this.createMemoryStore();
+  }
+
+  /**
+   * ConfigService에서 Redis 설정을 읽어 Redis 저장소 생성
+   */
+  private static async createRedisStoreFromConfig(
+    configService: ConfigService,
+  ): Promise<CacheStore> {
+    const config = {
+      host: configService.get<string>('cache.redis.host', 'localhost'),
+      port: configService.get<number>('cache.redis.port', 6379),
+      password: configService.get<string>('cache.redis.password'),
+      db: configService.get<number>('cache.redis.db', 0),
+    };
+
+    try {
+      console.log(
+        `[CacheFactory] Redis Store 생성 시도: ${config.host}:${config.port}`,
+      );
+      const store = new RedisStore(config);
+
+      // 연결 대기 (최대 5초)
+      const timeout = 5000;
+      const startTime = Date.now();
+
+      while (!(await store.isConnected())) {
+        if (Date.now() - startTime > timeout) {
+          throw new Error('Redis 연결 타임아웃 (5초 초과)');
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      console.log('[CacheFactory] Redis Store 생성 완료');
+      return store;
+    } catch (error) {
+      console.error('[CacheFactory] Redis Store 생성 실패:', error.message);
+      console.warn('[CacheFactory] Memory Store로 대체합니다 (fallback)');
+      return this.createMemoryStore();
+    }
+  }
   /**
    * 캐시 저장소 생성
    *

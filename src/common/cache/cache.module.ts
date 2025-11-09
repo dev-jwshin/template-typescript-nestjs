@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CacheFactory } from './cache.factory';
 
 /**
@@ -26,14 +27,16 @@ import { CacheFactory } from './cache.factory';
   providers: [
     {
       provide: 'CACHE_STORE',
-      useFactory: async () => {
-        // 환경 변수 검증
-        const validation = CacheFactory.validateConfig();
-        validation.messages.forEach((msg) => console.log(msg));
+      useFactory: async (configService: ConfigService) => {
+        // 중앙화된 설정에서 캐시 설정 가져오기
+        const driver = configService.get<string>('cache.driver', 'memory');
+
+        console.log(`[CacheModule] 캐시 드라이버: ${driver}`);
 
         // 캐시 저장소 생성
-        return await CacheFactory.create();
+        return await CacheFactory.createFromConfig(configService);
       },
+      inject: [ConfigService],
     },
   ],
   exports: ['CACHE_STORE'],
