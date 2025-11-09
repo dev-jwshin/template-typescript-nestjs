@@ -1,13 +1,17 @@
-import { Controller, UseInterceptors, UseFilters } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Crud, CrudOperation } from '../../common/crud';
-import { JsonApiTransformInterceptor } from '../../common/interceptors/jsonapi-transform.interceptor';
-import { JsonApiExceptionFilter } from '../../common/filters/jsonapi-exception.filter';
 
 /**
  * JSON:API 전용 사용자 컨트롤러
  *
  * /api/users 경로로 JSON:API 1.1 스펙을 완전히 준수하는 엔드포인트 제공
+ *
+ * JsonApiTransformInterceptor와 JsonApiExceptionFilter는 글로벌로 등록되어 있어
+ * 컨트롤러에서 별도로 선언할 필요가 없습니다.
+ *
+ * - JsonApiTransformInterceptor: APP_INTERCEPTOR로 글로벌 등록 (AppModule)
+ * - JsonApiExceptionFilter: useGlobalFilters로 글로벌 등록 (main.ts)
  */
 @Crud({
   // ========================================
@@ -207,10 +211,6 @@ import { JsonApiExceptionFilter } from '../../common/filters/jsonapi-exception.f
   },
 })
 @Controller('users') // 글로벌 prefix 'api'가 자동으로 추가됨 → /api/users
-@UseInterceptors(JsonApiTransformInterceptor)
-@UseFilters(JsonApiExceptionFilter)
-// JsonApiTransformMiddleware가 이미 JSON:API 형식을 변환했으므로
-// 글로벌 ValidationPipe가 변환된 객체를 검증함
 export class UsersJsonApiController {
   constructor(private readonly usersService: UsersService) {}
 }

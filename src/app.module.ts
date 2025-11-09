@@ -1,5 +1,6 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthModule } from './modules/health/health.module';
@@ -7,6 +8,7 @@ import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './database/prisma.module';
 import { CacheModule } from './common/cache/cache.module';
 import { JsonApiTransformMiddleware } from './common/middlewares/jsonapi-transform.middleware';
+import { JsonApiTransformInterceptor } from './common/interceptors/jsonapi-transform.interceptor';
 
 /**
  * 애플리케이션 루트 모듈
@@ -15,6 +17,7 @@ import { JsonApiTransformMiddleware } from './common/middlewares/jsonapi-transfo
  * - 기능 모듈 임포트
  * - 글로벌 프로바이더 설정
  * - JSON:API Transform Middleware 글로벌 적용
+ * - JSON:API Transform Interceptor 글로벌 적용 (APP_INTERCEPTOR)
  */
 @Module({
   imports: [
@@ -33,7 +36,15 @@ import { JsonApiTransformMiddleware } from './common/middlewares/jsonapi-transfo
     UsersModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // JSON:API Transform Interceptor 글로벌 등록
+    // Reflector를 통해 @JsonApiResource 데코레이터가 적용된 컨트롤러만 자동 변환
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: JsonApiTransformInterceptor,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   /**

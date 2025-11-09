@@ -3,12 +3,7 @@
  * 컨트롤러의 응답을 JSON:API 1.1 스펙에 맞게 변환
  */
 
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-} from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -17,11 +12,7 @@ import {
   JSONAPI_RESOURCE_TYPE,
   JSONAPI_INCLUDE_RELATIONSHIPS,
 } from '../decorators/jsonapi-resource.decorator';
-import {
-  JsonApiDocument,
-  ResourceObject,
-  PaginationLinks,
-} from '../interfaces/jsonapi.interface';
+import { JsonApiDocument, ResourceObject, PaginationLinks } from '../interfaces/jsonapi.interface';
 import {
   toResourceObject,
   toResourceObjects,
@@ -41,10 +32,7 @@ export class JsonApiTransformInterceptor implements NestInterceptor {
     const handler = context.getHandler();
 
     // 메타데이터에서 리소스 타입 가져오기
-    const resourceType = this.reflector.get<string>(
-      JSONAPI_RESOURCE_TYPE,
-      handler,
-    );
+    const resourceType = this.reflector.get<string>(JSONAPI_RESOURCE_TYPE, handler);
 
     // 리소스 타입이 지정되지 않은 경우 원본 응답 반환
     if (!resourceType) {
@@ -52,8 +40,7 @@ export class JsonApiTransformInterceptor implements NestInterceptor {
     }
 
     const includeRelationships =
-      this.reflector.get<boolean>(JSONAPI_INCLUDE_RELATIONSHIPS, handler) ||
-      false;
+      this.reflector.get<boolean>(JSONAPI_INCLUDE_RELATIONSHIPS, handler) || false;
 
     return next.handle().pipe(
       map((data) => {
@@ -145,11 +132,7 @@ export class JsonApiTransformInterceptor implements NestInterceptor {
     );
 
     // 페이지네이션 메타 정보 생성
-    const paginationMeta = createPaginationMeta(
-      currentPage,
-      pageSize,
-      totalItems,
-    );
+    const paginationMeta = createPaginationMeta(currentPage, pageSize, totalItems);
 
     return createJsonApiDocumentArray(resources, {
       meta: paginationMeta,
@@ -162,10 +145,7 @@ export class JsonApiTransformInterceptor implements NestInterceptor {
    */
   private isJsonApiDocument(data: any): boolean {
     return (
-      data &&
-      typeof data === 'object' &&
-      ('data' in data || 'errors' in data) &&
-      'jsonapi' in data
+      data && typeof data === 'object' && ('data' in data || 'errors' in data) && 'jsonapi' in data
     );
   }
 }
