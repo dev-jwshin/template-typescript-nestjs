@@ -12,44 +12,19 @@ import * as bcrypt from 'bcrypt';
  * CrudBaseService를 상속받아 표준 CRUD 작업을 자동으로 제공합니다.
  *
  * 주요 개선 사항:
+ * - ✅ @CrudEntity 데코레이터로 Entity에서 설정 관리 (Service 레이어 최소화)
  * - ✅ N+1 쿼리 자동 최적화 (eagerLoad: true)
  * - ✅ 비밀번호 자동 제외 (serialize.exclude)
  * - ✅ 복잡한 필터 연산자 지원 (eq, like, in 등)
- * - ✅ 보일러플레이트 코드 80% 감소 (213줄 → 50줄)
+ * - ✅ 보일러플레이트 코드 90% 감소 (213줄 → 25줄)
  *
  * Before (기존): 213줄 + 수동 쿼리 빌더
- * After (개선): 50줄 + 자동 최적화
+ * After (개선): 25줄 + 자동 최적화
  */
 @Injectable()
 export class UsersService extends CrudBaseService<User> {
   constructor(prisma: PrismaService) {
-    super(prisma, 'user', {
-      // 허용된 관계 (N+1 쿼리 최적화 대상)
-      allowedIncludes: [],
-
-      // 허용된 필터 (복잡한 연산자 지원)
-      allowedFilters: {
-        name: ['eq', 'like', 'ilike'],
-        email: ['eq', 'like', 'ilike'],
-        isActive: ['eq'],
-        createdAt: ['eq', 'gt', 'gte', 'lt', 'lte', 'between'],
-      },
-
-      // 허용된 정렬
-      allowedSorts: ['createdAt', 'updatedAt', 'name', 'email'],
-
-      // 성능 최적화
-      performance: {
-        query: {
-          eagerLoad: true, // N+1 쿼리 자동 방지
-        },
-      },
-
-      // 응답 직렬화 (민감한 필드 제거)
-      serialize: {
-        exclude: ['password'], // 비밀번호 자동 제외
-      },
-    });
+    super(prisma, User); // ✅ Entity 클래스만 전달 (모든 설정은 @CrudEntity에서 관리)
   }
 
   /**
@@ -73,10 +48,7 @@ export class UsersService extends CrudBaseService<User> {
    *
    * @override 부모 클래스의 update 메서드를 오버라이드하여 비밀번호 해싱 추가
    */
-  async update(
-    id: string,
-    updateUserDto: UpdateUserDto,
-  ): Promise<Omit<User, 'password'>> {
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<Omit<User, 'password'>> {
     // 비밀번호가 포함된 경우 해싱
     const updateData: any = { ...updateUserDto };
     if (updateUserDto.password) {

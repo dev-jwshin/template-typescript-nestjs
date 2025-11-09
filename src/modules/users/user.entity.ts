@@ -1,10 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { CrudEntity } from '../../common/crud';
 
 /**
  * 사용자 엔티티
  * - 사용자 데이터 모델 정의
  * - Prisma 모델과 매핑
+ * - @CrudEntity 데코레이터로 CRUD 설정 간소화
  */
+@CrudEntity({
+  modelName: 'user',
+  serialize: {
+    exclude: ['password'], // 비밀번호는 응답에서 자동 제외
+  },
+})
 export class User {
   @ApiProperty({
     description: '사용자 고유 ID (UUID)',
