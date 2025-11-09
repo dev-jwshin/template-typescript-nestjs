@@ -7,9 +7,11 @@
 // 타입
 export * from './types';
 export * from './types/crud-hook.interface';
+export * from './types/crud-entity-config.interface';
 
 // 데코레이터
 export * from './decorators';
+export * from './decorators/crud-entity.decorator';
 
 // 팩토리 (라우트 자동 생성)
 export * from './factories';
@@ -30,3 +32,6 @@ export * from './interceptors';
 
 // 플러그인
 export * from './plugins';
+
+// 레지스트리
+export * from './registry/service-registry';

@@ -3,6 +3,8 @@ import { PrismaService } from '../../../database/prisma.service';
 import { PrismaQueryBuilder } from '../builders';
 import { CrudConfig, CrudOperation, FilterOperator } from '../types';
 import { PaginatedResponse } from '../../dto/jsonapi-query.dto';
+import { ServiceRegistry } from '../registry/service-registry';
+import { getCrudEntityMetadata } from '../decorators/crud-entity.decorator';
 
 /**
  * CRUD 기본 서비스
@@ -10,7 +12,7 @@ import { PaginatedResponse } from '../../dto/jsonapi-query.dto';
  * N+1 쿼리 최적화 및 표준 CRUD 작업을 제공하는 베이스 서비스입니다.
  * 다른 서비스에서 상속받아 사용합니다.
  *
- * 사용 예시:
+ * 사용 예시 (기존 방식 - config 전달):
  * ```typescript
  * @Injectable()
  * export class UsersService extends CrudBaseService<User> {
@@ -23,6 +25,28 @@ import { PaginatedResponse } from '../../dto/jsonapi-query.dto';
  *   }
  * }
  * ```
+ *
+ * 사용 예시 (새 방식 - @CrudEntity 데코레이터):
+ * ```typescript
+ * @CrudEntity({
+ *   modelName: 'user',
+ *   allowedIncludes: ['profile', 'roles'],
+ *   allowedFilters: { name: ['eq', 'like'], isActive: ['eq'] },
+ *   performance: { query: { eagerLoad: true } }
+ * })
+ * export class User {
+ *   id: string;
+ *   name: string;
+ *   email: string;
+ * }
+ *
+ * @Injectable()
+ * export class UsersService extends CrudBaseService<User> {
+ *   constructor(prisma: PrismaService) {
+ *     super(prisma, User);  // Entity 클래스만 전달
+ *   }
+ * }
+ * ```
  */
 @Injectable()
 export abstract class CrudBaseService<T = any> {
@@ -30,13 +54,13 @@ export abstract class CrudBaseService<T = any> {
 
   /**
    * @param prisma Prisma 서비스
-   * @param modelName Prisma 모델 이름 (소문자, 예: 'user', 'post')
-   * @param config CRUD 설정 (일부)
+   * @param modelNameOrEntity Prisma 모델 이름 (소문자) 또는 @CrudEntity가 적용된 Entity 클래스
+   * @param config CRUD 설정 (선택사항, Entity 메타데이터가 우선됨)
    */
   constructor(
     protected readonly prisma: PrismaService,
-    protected readonly modelName: string,
-    protected readonly config: {
+    modelNameOrEntity: string | (new (...args: any[]) => T),
+    config?: {
       allowedIncludes?: string[];
       allowedFilters?: Record<string, FilterOperator[]>;
       allowedSorts?: string[];
@@ -44,11 +68,60 @@ export abstract class CrudBaseService<T = any> {
       serialize?: {
         exclude?: string[];
         transform?: (data: any) => any;
+        relations?: Record<string, string>;
       };
     },
   ) {
     this.queryBuilder = new PrismaQueryBuilder();
+
+    // modelName 결정
+    let finalModelName: string;
+    let entityMetadata: any = undefined;
+
+    if (typeof modelNameOrEntity === 'string') {
+      // 기존 방식: 문자열 모델명 전달
+      finalModelName = modelNameOrEntity;
+      this.config = config || {};
+    } else {
+      // 새 방식: Entity 클래스 전달
+      entityMetadata = getCrudEntityMetadata(modelNameOrEntity);
+
+      if (!entityMetadata || !entityMetadata.modelName) {
+        throw new Error(
+          `@CrudEntity 데코레이터가 ${modelNameOrEntity.name}에 적용되지 않았습니다. ` +
+            `@CrudEntity({ modelName: '...' })를 Entity 클래스에 추가하거나, ` +
+            `super(prisma, 'modelName', config)처럼 문자열 모델명을 전달하세요.`,
+        );
+      }
+
+      finalModelName = entityMetadata.modelName;
+
+      // Entity 메타데이터를 config로 사용 (기존 config와 병합)
+      this.config = {
+        ...entityMetadata,
+        ...config, // 전달된 config가 우선순위 높음
+      };
+    }
+
+    this.modelName = finalModelName;
+
+    // 서비스 레지스트리에 자동 등록
+    ServiceRegistry.register(this.modelName, this);
   }
+
+  // modelName과 config를 readonly로 변경
+  protected readonly modelName: string;
+  protected readonly config: {
+    allowedIncludes?: string[];
+    allowedFilters?: Record<string, FilterOperator[]>;
+    allowedSorts?: string[];
+    performance?: { query?: { eagerLoad?: boolean } };
+    serialize?: {
+      exclude?: string[];
+      transform?: (data: any) => any;
+      relations?: Record<string, string>;
+    };
+  };
 
   /**
    * Prisma 모델 접근자
@@ -213,7 +286,7 @@ export abstract class CrudBaseService<T = any> {
   }
 
   /**
-   * 엔티티 직렬화 (민감한 필드 제거)
+   * 엔티티 직렬화 (민감한 필드 제거 + 재귀적 관계 직렬화)
    *
    * @param entity 원본 엔티티
    * @returns 직렬화된 엔티티
@@ -228,20 +301,58 @@ export abstract class CrudBaseService<T = any> {
       return entity.map((item) => this.serialize(item)) as any;
     }
 
-    // 제외할 필드 제거
+    // 1. 최상위 필드 제거
+    let serialized = { ...entity };
+
     if (this.config.serialize?.exclude) {
-      const serialized = { ...entity };
       this.config.serialize.exclude.forEach((field) => {
         delete serialized[field];
       });
-      entity = serialized;
     }
 
-    // 커스텀 변환 함수 적용
+    // 2. 재귀적 관계 직렬화
+    if (this.config.serialize?.relations) {
+      Object.entries(this.config.serialize.relations).forEach(
+        ([relationField, modelName]) => {
+          const relationData = serialized[relationField];
+
+          // 관계 데이터가 존재하는 경우에만 처리
+          if (relationData !== undefined && relationData !== null) {
+            // 관계 서비스 조회
+            const relationService = ServiceRegistry.get(modelName);
+
+            if (relationService && typeof relationService.serialize === 'function') {
+              // 배열인 경우
+              if (Array.isArray(relationData)) {
+                serialized[relationField] = relationData.map((item) =>
+                  relationService.serialize(item),
+                );
+              }
+              // 단일 객체인 경우
+              else if (typeof relationData === 'object') {
+                serialized[relationField] = relationService.serialize(relationData);
+              }
+            }
+          }
+        },
+      );
+    }
+
+    // 3. 커스텀 변환 함수 적용
     if (this.config.serialize?.transform) {
-      entity = this.config.serialize.transform(entity);
+      serialized = this.config.serialize.transform(serialized);
     }
 
-    return entity;
+    return serialized;
+  }
+
+  /**
+   * 외부에서 serialize 호출 가능하도록 public 메서드 제공
+   *
+   * @param entity 원본 엔티티
+   * @returns 직렬화된 엔티티
+   */
+  public serializeEntity(entity: any): T {
+    return this.serialize(entity);
   }
 }
