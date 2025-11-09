@@ -215,7 +215,7 @@ const globalStore = new RateLimitStore();
 // 주기적인 정리 (5분마다)
 setInterval(() => {
   globalStore.cleanup(300000); // 5분
-}, 300000);
+}, 300000).unref(); // Jest가 이 타이머 때문에 종료되지 않는 것을 방지
 
 /**
  * Rate Limit 플러그인 팩토리
