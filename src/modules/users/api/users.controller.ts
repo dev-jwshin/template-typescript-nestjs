@@ -211,6 +211,6 @@ import { Crud, CrudOperation } from '../../../common/crud';
   },
 })
 @Controller('users') // 글로벌 prefix 'api'가 자동으로 추가됨 → /api/users
-export class UsersJsonApiController {
+export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 }
