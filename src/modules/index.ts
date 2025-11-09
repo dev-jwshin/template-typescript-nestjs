@@ -37,5 +37,5 @@ export const ALL_MODULES = [
   HealthModule,
 
   // Feature
-  ProductsModule
+  ProductsModule,
 ];
