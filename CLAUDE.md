@@ -351,6 +351,80 @@ export class UsersService {
 }
 ```
 
+### 5. Gzip 압축
+
+**목적**: 네트워크 대역폭 절약 및 응답 속도 향상 (응답 크기 40-70% 감소)
+
+**환경 변수 설정**:
+
+```env
+# .env
+COMPRESSION_ENABLED=true        # 압축 활성화 (true | false)
+COMPRESSION_LEVEL=6             # 압축 레벨 (1-9)
+COMPRESSION_THRESHOLD=1024      # 최소 압축 크기 (bytes)
+```
+
+**압축 레벨 가이드**:
+- **1**: 최소 압축, 최고 속도 (빠른 응답 우선)
+- **6**: 균형 (기본값, 권장)
+- **9**: 최대 압축, 최저 속도 (대역폭 절약 우선)
+
+**동작 방식**:
+- `Accept-Encoding: gzip` 헤더가 있는 요청에만 압축 적용
+- `threshold` 미만 응답은 압축하지 않음 (오버헤드 방지)
+- `x-no-compression` 헤더로 특정 요청 제외 가능
+
+**테스트 방법**:
+
+```bash
+# 압축 확인
+curl -H "Accept-Encoding: gzip" http://localhost:3000/api/users -I
+
+# 응답 헤더 확인
+# Content-Encoding: gzip  ← 압축됨
+
+# 압축 제외
+curl -H "x-no-compression: true" http://localhost:3000/api/users -I
+```
+
+**성능 효과**:
+- JSON 응답: 약 60-70% 크기 감소
+- HTML 응답: 약 50-60% 크기 감소
+- 이미지/비디오: 이미 압축된 형식이므로 효과 미미
+
+**주의사항**:
+- CPU 사용량 약간 증가 (레벨이 높을수록)
+- 1KB 미만 응답은 압축하지 않는 것이 효율적
+- 프로덕션 환경에서는 레벨 6 권장
+
+**압축 로깅 활성화** (선택 사항):
+
+압축 적용 여부를 로그로 확인하려면 `CompressionLoggingInterceptor`를 글로벌로 등록하세요:
+
+```typescript
+// src/app.module.ts
+import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { CompressionLoggingInterceptor } from './common/interceptors/compression-logging.interceptor';
+
+@Module({
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: CompressionLoggingInterceptor,
+    },
+  ],
+})
+export class AppModule {}
+```
+
+**로그 출력 예시**:
+```
+[Compression] ✅ [GET] /api/users - Gzip compressed
+[Compression] ⚠️  [GET] /api/health - Not compressed (below threshold)
+[Compression] 🚫 [GET] /api/docs - Compression skipped (x-no-compression)
+```
+
 ---
 
 ## 코딩 규칙
