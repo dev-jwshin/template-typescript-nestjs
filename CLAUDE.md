@@ -81,9 +81,7 @@ template-typescript-nestjs/
 │           │
 │           ├── 📂 dto/                         # DTO 정의
 │           │   ├── create-[feature].dto.ts
-│           │   ├── create-[feature].dto.spec.ts
 │           │   ├── update-[feature].dto.ts
-│           │   └── update-[feature].dto.spec.ts
 │           │
 │           ├── 📂 interfaces/                  # 인터페이스 (선택)
 │           │
@@ -129,9 +127,7 @@ template-typescript-nestjs/
 │
 ├── 📂 dto/                            # 데이터 전송 객체
 │   ├── create-user.dto.ts            # 생성 DTO
-│   ├── create-user.dto.spec.ts       # 생성 DTO 검증 테스트
 │   ├── update-user.dto.ts            # 수정 DTO
-│   └── update-user.dto.spec.ts       # 수정 DTO 검증 테스트
 │
 ├── 📂 interfaces/                     # 타입 인터페이스 (현재 비어있음)
 │
@@ -401,9 +397,7 @@ modules/[feature-name]/
 │   └── [feature].controller.ts
 ├── dto/                      # DTO 정의
 │   ├── create-[feature].dto.ts
-│   ├── create-[feature].dto.spec.ts
 │   ├── update-[feature].dto.ts
-│   └── update-[feature].dto.spec.ts
 ├── interfaces/               # 인터페이스 (선택사항)
 ├── test/                     # 테스트 파일 (필수)
 │   ├── unit/                 # 유닛 테스트
@@ -523,22 +517,6 @@ pnpm prisma:seed
 ---
 
 ## 테스트
-
-### 테스트 구조
-
-```
-src/
-├── modules/users/
-│   ├── users.service.spec.ts       # 서비스 유닛 테스트
-│   └── dto/
-│       ├── create-user.dto.spec.ts  # DTO 검증 테스트
-│       └── update-user.dto.spec.ts
-│
-test/
-├── crud-system.e2e-spec.ts         # CRUD 시스템 E2E 테스트
-├── crud-hooks-plugins.e2e-spec.ts  # Hook & Plugin E2E 테스트
-└── performance-test.ts             # 성능 테스트
-```
 
 ### 테스트 작성 가이드
 
