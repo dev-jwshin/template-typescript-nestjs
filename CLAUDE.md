@@ -41,64 +41,114 @@
 
 ```
 template-typescript-nestjs/
-├── src/
-│   ├── app.module.ts                 # 루트 모듈
-│   ├── main.ts                       # 애플리케이션 진입점
+│
+├── 📂 src/                                      # 소스 코드
+│   ├── app.module.ts                           # 루트 모듈
+│   ├── main.ts                                 # 애플리케이션 진입점
 │   │
-│   ├── common/                       # 공통 모듈
-│   │   ├── cache/                    # Redis 캐싱 시스템
-│   │   ├── crud/                     # @Crud 데코레이터 시스템
-│   │   │   ├── decorators/           # CRUD 데코레이터
-│   │   │   ├── builders/             # Prisma 쿼리 빌더
-│   │   │   ├── services/             # CRUD 베이스 서비스
+│   ├── 📂 common/                              # 공통 모듈
+│   │   ├── 📂 cache/                           # Redis 캐싱 시스템
+│   │   ├── 📂 crud/                            # @Crud 데코레이터 시스템
+│   │   │   ├── decorators/                     # CRUD 데코레이터
+│   │   │   ├── builders/                       # Prisma 쿼리 빌더
+│   │   │   ├── services/                       # CRUD 베이스 서비스
 │   │   │   └── index.ts
-│   │   ├── decorators/               # 커스텀 데코레이터
-│   │   ├── filters/                  # 예외 필터
-│   │   ├── interceptors/             # 인터셉터
-│   │   ├── middlewares/              # 미들웨어
-│   │   ├── pipes/                    # 파이프
-│   │   ├── interfaces/               # 공통 인터페이스
-│   │   └── utils/                    # 헬퍼 함수
+│   │   ├── 📂 decorators/                      # 커스텀 데코레이터
+│   │   ├── 📂 filters/                         # 예외 필터
+│   │   ├── 📂 interceptors/                    # 인터셉터
+│   │   ├── 📂 middlewares/                     # 미들웨어
+│   │   ├── 📂 pipes/                           # 파이프
+│   │   ├── 📂 interfaces/                      # 공통 인터페이스
+│   │   └── 📂 utils/                           # 헬퍼 함수
 │   │
-│   ├── config/                       # 설정 파일
+│   ├── 📂 config/                              # 설정 파일
 │   │
-│   ├── database/                     # 데이터베이스 설정
-│   │   ├── prisma.service.ts
-│   │   └── prisma.module.ts
+│   ├── 📂 database/                            # 데이터베이스 설정
+│   │   ├── prisma.service.ts                   # Prisma 서비스
+│   │   └── prisma.module.ts                    # Prisma 모듈
 │   │
-│   └── modules/                         # 기능 모듈
-│       ├── health/                      # 헬스체크 모듈
-│       └── {module_name}/               # 모듈
-│           ├── admin/                   # 관리자용 컨트롤러
-│           │   └── {module_name}.controller.ts
-│           ├── api/                     # API용 컨트롤러
-│           │   └── {module_name}.controller.ts
-│           ├── dto/                     # DTO 정의
-│           │   ├── create.dto.ts
-│           │   └── update.dto.ts
-│           ├── interfaces/              # 인터페이스
-│           ├── {module_name}.entity.ts  # Prisma 엔티티
-│           ├── {module_name}.service.ts # 비즈니스 로직
-│           └── {module_name}.module.ts  # 모듈 정의
+│   └── 📂 modules/                             # 기능 모듈
+│       │
+│       ├── 📂 health/                          # 헬스체크 모듈 (예시)
+│       │
+│       └── 📂 [feature]/                       # 모듈 템플릿 구조 ⭐
+│           │
+│           ├── 📂 admin/                       # 관리자용 컨트롤러 (선택)
+│           │   └── [feature].controller.ts
+│           │
+│           ├── 📂 api/                         # API용 컨트롤러 (필수)
+│           │   └── [feature].controller.ts
+│           │
+│           ├── 📂 dto/                         # DTO 정의
+│           │   ├── create-[feature].dto.ts
+│           │   └── update-[feature].dto.ts
+│           │
+│           ├── 📂 interfaces/                  # 인터페이스 (선택)
+│           │
+│           ├── [feature].entity.ts             # Prisma 엔티티
+│           ├── [feature].service.ts            # 비즈니스 로직
+│           ├── [feature].service.spec.ts       # 서비스 테스트
+│           └── [feature].module.ts             # 모듈 정의
 │
-├── prisma/                           # Prisma 설정
-│   ├── schema.prisma                 # 데이터베이스 스키마
-│   ├── migrations/                   # 마이그레이션 파일
-│   └── seed.ts                       # 시드 데이터
+├── 📂 prisma/                                  # Prisma 설정
+│   ├── schema.prisma                           # 데이터베이스 스키마
+│   ├── 📂 migrations/                          # 마이그레이션 파일
+│   └── seed.ts                                 # 시드 데이터
 │
-├── test/                             # E2E 테스트
+├── 📂 test/                                    # E2E 테스트
 │
-├── docs/                             # 문서
-│   └── CRUD_DECORATOR_GUIDE.md       # CRUD 데코레이터 가이드
+├── 📂 docs/                                    # 문서
+│   └── CRUD_DECORATOR_GUIDE.md                 # CRUD 데코레이터 가이드
 │
-├── examples/                         # 예제 코드
+├── 📂 examples/                                # 예제 코드
 │
-├── README.md                         # 프로젝트 소개
-├── ARCHITECTURE.md                   # 아키텍처 가이드
-├── PRISMA.md                         # Prisma 가이드
-├── JSON_API.md                       # JSON:API 가이드
-└── CLAUDE.md                         # 이 파일 (Claude Code 가이드)
+├── 📄 README.md                                # 프로젝트 소개
+├── 📄 ARCHITECTURE.md                          # 아키텍처 가이드
+├── 📄 PRISMA.md                                # Prisma 가이드
+├── 📄 JSON_API.md                              # JSON:API 가이드
+└── 📄 CLAUDE.md                                # Claude Code 가이드 (이 파일)
 ```
+
+### 모듈 구조 상세 설명
+
+**실제 예시**: `users` 모듈
+
+```
+📂 modules/users/
+│
+├── 📂 admin/                          # 관리자 전용 컨트롤러
+│   └── users.controller.ts           # 관리자 API 엔드포인트
+│
+├── 📂 api/                            # 일반 API 컨트롤러
+│   ├── users-crud.controller.ts      # @Crud 데코레이터 방식
+│   └── users-jsonapi.controller.ts   # JSON:API 전용
+│
+├── 📂 dto/                            # 데이터 전송 객체
+│   ├── create-user.dto.ts            # 생성 DTO
+│   ├── create-user.dto.spec.ts       # 생성 DTO 테스트
+│   ├── update-user.dto.ts            # 수정 DTO
+│   └── update-user.dto.spec.ts       # 수정 DTO 테스트
+│
+├── 📂 interfaces/                     # 타입 인터페이스 (선택)
+│
+├── user.entity.ts                     # Prisma 엔티티 타입
+├── users.service.ts                   # 비즈니스 로직
+├── users.service.spec.ts              # 서비스 유닛 테스트
+└── users.module.ts                    # NestJS 모듈 정의
+```
+
+**폴더별 역할**:
+
+| 폴더/파일 | 필수 | 역할 |
+|----------|------|------|
+| `admin/` | ❌ 선택 | 관리자 전용 API (백오피스) |
+| `api/` | ✅ 필수 | 일반 사용자 API |
+| `dto/` | ✅ 필수 | 요청 검증 및 타입 정의 |
+| `interfaces/` | ❌ 선택 | 공통 인터페이스 |
+| `[feature].entity.ts` | ✅ 필수 | Prisma 엔티티 타입 |
+| `[feature].service.ts` | ✅ 필수 | 비즈니스 로직 |
+| `[feature].service.spec.ts` | ✅ 필수 | 서비스 테스트 |
+| `[feature].module.ts` | ✅ 필수 | NestJS 모듈 |
 
 ---
 
