@@ -499,7 +499,6 @@ GET /api/users/123?include=profile
 ### 관련 문서
 - [CRUD 시스템 가이드](../src/common/crud/CLAUDE.md)
 - [재귀적 직렬화 가이드](./RECURSIVE_SERIALIZATION.md)
-- [@CrudEntity 데코레이터 가이드](./CRUD_ENTITY_DECORATOR.md)
 
 ### 핵심 파일 위치
 - BaseSerializer: `src/common/crud/serializers/base.serializer.ts`

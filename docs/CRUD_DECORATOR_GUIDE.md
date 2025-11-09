@@ -785,21 +785,28 @@ export class UsersController {
 
 ### 응답 직렬화
 
-```typescript
-@Crud({
-  only: [CrudOperation.Index, CrudOperation.Show],
-  resourceType: 'users',
+응답 직렬화는 `{module}.serializer.ts` 파일을 통해 관리됩니다. [@Crud 데코레이터에서는 직렬화 설정을 지원하지 않습니다.](./FILE_BASED_SERIALIZER.md)
 
-  serialize: {
-    exclude: ['password', 'resetToken'], // 제외 필드
-    include: ['fullName'],               // 항상 포함
-    transform: (data) => {
-      // 커스텀 변환
-      data.fullName = `${data.firstName} ${data.lastName}`;
-      return data;
-    },
-  },
-})
+```typescript
+// src/modules/users/user.serializer.ts
+import { BaseSerializer } from '../../common/crud/serializers/base.serializer';
+import { User } from './user.entity';
+
+export class UserSerializer extends BaseSerializer<User> {
+  protected excludeFields = ['password', 'resetToken']; // 제외 필드
+
+  protected relations = {
+    profile: 'profile',  // profile 관계는 ProfileSerializer 사용
+  };
+
+  protected transformData(data: User): any {
+    // 커스텀 변환
+    return {
+      ...data,
+      fullName: `${data.firstName} ${data.lastName}`,
+    };
+  }
+}
 ```
 
 ---

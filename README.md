@@ -66,7 +66,7 @@ curl -X POST http://localhost:3000/api/users \
 
 ### 주요 특징
 
-- 🚀 **@CrudEntity 데코레이터** - Entity 중심 설계로 Service 레이어 코드 90% 감소 (50줄 → 5줄)
+- 🚀 **파일 기반 Serializer** - Entity별 독립적인 직렬화 규칙 관리로 코드 중앙화
 - 🔄 **재귀적 직렬화** - 관계 데이터의 민감 정보 자동 제외 (password, apiKey 등)
 - 🎯 **자동 CRUD 엔드포인트 생성** - 단일 데코레이터로 5개 엔드포인트 자동 생성
 - 🔍 **13가지 필터 연산자** - eq, ne, gt, gte, lt, lte, like, ilike, in, nin, between, isNull, isNotNull
@@ -76,40 +76,34 @@ curl -X POST http://localhost:3000/api/users \
 - 🎨 **JSON:API 1.1 완전 준수** - 표준화된 요청/응답 형식
 - 🔌 **Hook & Plugin 시스템** - Before/After 훅과 확장 가능한 플러그인
 
-### 새로운 방식: @CrudEntity 데코레이터 (권장)
+### 파일 기반 Serializer 시스템
 
-**Service 레이어 코드 90% 감소** - Entity 중심 설계로 설정을 한 곳에서 관리
+**직렬화 로직 중앙화** - 각 Entity마다 `.serializer.ts` 파일로 직렬화 규칙 관리
 
 ```typescript
-// 1. Entity에 @CrudEntity 데코레이터 적용
-import { CrudEntity } from '../../common/crud';
-
-@CrudEntity({
-  modelName: 'user',  // Prisma 모델명 (필수)
-  serialize: {
-    exclude: ['password'],  // 응답에서 제외할 필드
-  },
-})
-export class User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;  // ❌ 응답에서 자동 제외
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// 2. Service 레이어 최소화 (단 5줄)
-import { Injectable } from '@nestjs/common';
-import { CrudBaseService } from '../../common/crud';
-import { PrismaService } from '../../database/prisma.service';
+// 1. UserSerializer 생성 (user.serializer.ts)
+import { BaseSerializer } from '../../common/crud/serializers/base.serializer';
 import { User } from './user.entity';
 
-@Injectable()
-export class UsersService extends CrudBaseService<User> {
-  constructor(prisma: PrismaService) {
-    super(prisma, User);  // ✅ Entity 클래스만 전달 (모든 설정 자동 적용)
+export class UserSerializer extends BaseSerializer<User> {
+  protected excludeFields = ['password'];  // 응답에서 제외할 필드
+
+  protected relations = {
+    profile: 'profile',  // ProfileSerializer 자동 적용
+  };
+}
+
+// 2. 모듈에서 Serializer 등록 (users.module.ts)
+import { Module, OnModuleInit } from '@nestjs/common';
+import { SerializerRegistry } from '../../common/crud/serializers/serializer-registry';
+import { UserSerializer } from './user.serializer';
+
+@Module({
+  // ...
+})
+export class UsersModule implements OnModuleInit {
+  onModuleInit() {
+    SerializerRegistry.register('user', new UserSerializer());
   }
 }
 
@@ -554,23 +548,14 @@ create(@Req() req: Request, @Body() body: CreateUserDto) {
 ### 사용 예시
 
 ```typescript
-// 1. Post Entity에 serialize.relations 설정
-@CrudEntity({
-  modelName: 'post',
-  serialize: {
-    exclude: ['isDraft'],  // Post의 isDraft 필드 제외
-    relations: {
-      author: 'user',     // author 관계는 user 모델로 직렬화
-      comments: 'comment', // comments 관계는 comment 모델로 직렬화
-    },
-  },
-})
-export class Post {
-  id: string;
-  title: string;
-  isDraft: boolean;  // ❌ 응답에서 제외
-  author?: User;     // ✅ User 직렬화 규칙 자동 적용 (password 제외)
-  comments?: Comment[]; // ✅ Comment 직렬화 규칙 자동 적용
+// 1. PostSerializer에 relations 설정
+export class PostSerializer extends BaseSerializer<Post> {
+  protected excludeFields = ['isDraft'];  // Post의 isDraft 필드 제외
+
+  protected relations = {
+    author: 'user',     // author 관계는 UserSerializer 자동 적용
+    comments: 'comment', // comments 관계는 CommentSerializer 자동 적용
+  };
 }
 
 // 2. API 응답 예시

@@ -5,7 +5,6 @@
 ## 📋 목차
 
 - [개요](#개요)
-- [@CrudEntity 데코레이터 (NEW)](#crudentity-데코레이터-new)
 - [핵심 개념](#핵심-개념)
 - [빠른 시작](#빠른-시작)
 - [설정 옵션](#설정-옵션)
@@ -107,78 +106,6 @@ export class UsersController {
 
 ---
 
-## @CrudEntity 데코레이터 (NEW)
-
-### Service 레이어 코드 90% 감소
-
-**@CrudEntity**는 Entity 클래스에 CRUD 설정을 메타데이터로 저장하여 Service 레이어 코드를 극적으로 줄이는 데코레이터입니다.
-
-### Before vs After
-
-#### ❌ 기존 방식 (50줄)
-
-```typescript
-// src/modules/users/users.service.ts
-@Injectable()
-export class UsersService extends CrudBaseService<User> {
-  constructor(prisma: PrismaService) {
-    super(prisma, 'user', {
-      allowedIncludes: ['profile', 'posts'],
-      allowedFilters: {
-        name: ['eq', 'like'],
-        email: ['eq'],
-        isActive: ['eq'],
-      },
-      allowedSorts: ['createdAt', 'name'],
-      performance: {
-        query: { eagerLoad: true },
-      },
-      serialize: {
-        exclude: ['password'],
-      },
-    });
-  }
-}
-```
-
-#### ✅ 새 방식 (5줄) - 90% 감소
-
-```typescript
-// 1. Entity에 설정 집중
-@CrudEntity({
-  modelName: 'user',
-  serialize: {
-    exclude: ['password'],
-  },
-})
-export class User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;  // ❌ 응답에서 자동 제외
-}
-
-// 2. Service 레이어 최소화
-@Injectable()
-export class UsersService extends CrudBaseService<User> {
-  constructor(prisma: PrismaService) {
-    super(prisma, User);  // ✅ Entity 클래스만 전달
-  }
-}
-```
-
-### 주요 장점
-
-- ✅ **코드 중복 제거**: 여러 Service에서 같은 Entity 사용 시 설정 재사용
-- ✅ **Entity 중심 설계**: 데이터 모델과 설정이 함께 관리됨
-- ✅ **유지보수 용이**: 설정 변경 시 Entity만 수정하면 됨
-- ✅ **타입 안정성**: TypeScript 데코레이터로 타입 안전성 보장
-
-### 상세 가이드
-
-📚 **@CrudEntity 완전 가이드**: [docs/CRUD_ENTITY_DECORATOR.md](../../../docs/CRUD_ENTITY_DECORATOR.md)
-
----
 
 ## 핵심 개념
 
@@ -235,9 +162,7 @@ export class UsersService extends CrudBaseService<User> {
       performance: {
         query: { eagerLoad: true }, // N+1 쿼리 최적화 활성화
       },
-      serialize: {
-        exclude: ['password'], // 응답에서 제외할 필드
-      },
+      // 직렬화는 user.serializer.ts에서 관리 (파일 기반 Serializer 사용)
     });
   }
 
@@ -340,9 +265,7 @@ export class UsersService extends CrudBaseService<User> {
       performance: {
         query: { eagerLoad: true },
       },
-      serialize: {
-        exclude: ['password'],
-      },
+      // 직렬화는 user.serializer.ts에서 관리 (파일 기반 Serializer 사용)
     });
   }
 }
@@ -376,12 +299,10 @@ import { UsersService } from '../users.service';
     defaultLimit: 20,
     limit: 100,
   },
-  serialize: {
-    exclude: ['password'],
-  },
   performance: {
     query: { eagerLoad: true },
   },
+  // 직렬화는 user.serializer.ts에서 관리 (파일 기반 Serializer 사용)
 })
 @Controller('users')
 export class UsersController {
@@ -624,24 +545,9 @@ allowedParams: {
 }
 ```
 
-### 8. serialize (선택)
+**참고**: 응답 직렬화는 `{module}.serializer.ts` 파일을 통해 관리됩니다. [@Crud 데코레이터에서는 직렬화 설정을 지원하지 않습니다.](#재귀적-직렬화)
 
-응답 직렬화 설정
-
-```typescript
-serialize: {
-  exclude: ['password', 'resetToken'],  // 응답에서 제외할 필드
-  transform: (data) => {
-    // 커스텀 변환 로직
-    return {
-      ...data,
-      fullName: `${data.firstName} ${data.lastName}`,
-    };
-  },
-}
-```
-
-### 9. performance (선택)
+### 8. performance (선택)
 
 성능 최적화 설정
 
@@ -666,7 +572,7 @@ performance: {
 // → 단 1번의 쿼리로 해결
 ```
 
-### 10. routes (선택)
+### 9. routes (선택)
 
 개별 라우트 설정 (전역 설정 오버라이드)
 
@@ -824,18 +730,10 @@ const users = await prisma.user.findMany({
 ### 문제 상황
 
 ```typescript
-// ❌ 기존: 최상위 Entity만 직렬화
-@CrudEntity({
-  modelName: 'post',
-  serialize: {
-    exclude: ['isDraft'],
-  },
-})
-export class Post {
-  id: string;
-  title: string;
-  isDraft: boolean;
-  author?: User;  // User의 password가 그대로 노출됨!
+// ❌ 파일 기반 Serializer 미사용 시
+export class PostSerializer extends BaseSerializer<Post> {
+  protected excludeFields = ['isDraft'];
+  // relations 설정 없음 - author의 password 노출됨!
 }
 
 // API 응답
@@ -854,37 +752,19 @@ export class Post {
 ### 해결 방법
 
 ```typescript
-// ✅ serialize.relations 설정
-@CrudEntity({
-  modelName: 'post',
-  serialize: {
-    exclude: ['isDraft'],
-    relations: {
-      author: 'user',    // author 관계는 user 모델로 직렬화
-      comments: 'comment', // comments 관계는 comment 모델로 직렬화
-    },
-  },
-})
-export class Post {
-  id: string;
-  title: string;
-  isDraft: boolean;
-  author?: User;
-  comments?: Comment[];
+// ✅ PostSerializer에 relations 설정
+export class PostSerializer extends BaseSerializer<Post> {
+  protected excludeFields = ['isDraft'];
+
+  protected relations = {
+    author: 'user',    // author 관계는 UserSerializer 사용
+    comments: 'comment', // comments 관계는 CommentSerializer 사용
+  };
 }
 
-// User Entity 설정
-@CrudEntity({
-  modelName: 'user',
-  serialize: {
-    exclude: ['password'],  // ✅ password 제외
-  },
-})
-export class User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
+// UserSerializer 설정
+export class UserSerializer extends BaseSerializer<User> {
+  protected excludeFields = ['password'];  // ✅ password 제외
 }
 
 // API 응답
@@ -1162,9 +1042,7 @@ export class UsersService extends CrudBaseService<User> {
         isActive: ['eq'],
       },
       allowedSorts: ['createdAt', 'name'],
-      serialize: {
-        exclude: ['password'],
-      },
+      // 직렬화는 user.serializer.ts에서 관리 (파일 기반 Serializer 사용)
     });
   }
 }
@@ -1298,9 +1176,7 @@ export class AdminUsersController {
   allowedFilters: {
     name: ['eq', 'like'],
   },
-  serialize: {
-    exclude: ['email', 'password'],  // 민감 정보 제외
-  },
+  // 민감 정보 제외는 user.serializer.ts에서 관리 (파일 기반 Serializer 사용)
 })
 @Controller('users')
 export class UsersController {
@@ -1365,16 +1241,17 @@ export class UsersService extends CrudBaseService<User> {
 
 ### 4. 민감한 정보 노출
 
-**원인**: `serialize.exclude` 미설정
+**원인**: 파일 기반 Serializer에서 `excludeFields` 미설정
 
 **해결**:
 ```typescript
-@Crud({
-  // ...
-  serialize: {
-    exclude: ['password', 'resetToken', 'apiKey'],  // ✅ 제외할 필드 명시
-  },
-})
+// src/modules/users/user.serializer.ts
+import { BaseSerializer } from '../../common/crud/serializers/base.serializer';
+import { User } from './user.entity';
+
+export class UserSerializer extends BaseSerializer<User> {
+  protected excludeFields = ['password', 'resetToken', 'apiKey'];  // ✅ 제외할 필드 명시
+}
 ```
 
 ### 5. 페이지네이션이 작동하지 않음
