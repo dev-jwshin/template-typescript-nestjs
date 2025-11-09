@@ -65,7 +65,37 @@ export abstract class CrudBaseService<T = any> {
   ) {
     this.queryBuilder = new PrismaQueryBuilder();
     this.modelName = modelName;
-    this.config = (config || {}) as CrudConfig;
+
+    // 기본값 설정 (권장값)
+    const defaultConfig: Partial<CrudConfig> = {
+      pagination: {
+        defaultLimit: 20,
+        limit: 100,
+      },
+      performance: {
+        query: {
+          eagerLoad: true, // N+1 쿼리 자동 최적화
+        },
+      },
+    };
+
+    // 사용자 설정으로 기본값 override
+    this.config = {
+      ...defaultConfig,
+      ...config,
+      pagination: {
+        ...defaultConfig.pagination,
+        ...config?.pagination,
+      },
+      performance: {
+        ...defaultConfig.performance,
+        ...config?.performance,
+        query: {
+          ...defaultConfig.performance?.query,
+          ...config?.performance?.query,
+        },
+      },
+    } as CrudConfig;
 
     // 서비스 레지스트리에 자동 등록
     ServiceRegistry.register(this.modelName, this);
@@ -156,7 +186,7 @@ export abstract class CrudBaseService<T = any> {
       sort: options?.sort,
       page: options?.page,
       fields: options?.fields,
-      eagerLoad: this.config.performance?.query?.eagerLoad || false,
+      eagerLoad: this.config.performance?.query?.eagerLoad ?? true,
     });
 
     // 페이지네이션이 있는 경우
