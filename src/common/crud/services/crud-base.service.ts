@@ -5,6 +5,8 @@ import { CrudConfig, CrudOperation, FilterOperator } from '../types';
 import { PaginatedResponse } from '../../dto/jsonapi-query.dto';
 import { ServiceRegistry } from '../registry/service-registry';
 import { getCrudEntityMetadata } from '../decorators/crud-entity.decorator';
+import { SerializerRegistry } from '../serializers/serializer-registry';
+import { BaseSerializer } from '../serializers/base.serializer';
 
 /**
  * CRUD 기본 서비스
@@ -288,6 +290,10 @@ export abstract class CrudBaseService<T = any> {
   /**
    * 엔티티 직렬화 (민감한 필드 제거 + 재귀적 관계 직렬화)
    *
+   * 우선순위:
+   * 1. 파일 기반 Serializer (SerializerRegistry에서 조회)
+   * 2. Config 기반 직렬화 (기존 방식)
+   *
    * @param entity 원본 엔티티
    * @returns 직렬화된 엔티티
    */
@@ -301,6 +307,14 @@ export abstract class CrudBaseService<T = any> {
       return entity.map((item) => this.serialize(item)) as any;
     }
 
+    // ✅ 우선순위 1: 파일 기반 Serializer 사용 (SerializerRegistry)
+    const fileBasedSerializer = SerializerRegistry.get(this.modelName);
+    if (fileBasedSerializer) {
+      const serializerRegistry = SerializerRegistry.getAll();
+      return fileBasedSerializer.serialize(entity, serializerRegistry) as T;
+    }
+
+    // ✅ 우선순위 2: Config 기반 직렬화 (기존 방식)
     // 1. 최상위 필드 제거
     let serialized = { ...entity };
 
@@ -310,7 +324,7 @@ export abstract class CrudBaseService<T = any> {
       });
     }
 
-    // 2. 재귀적 관계 직렬화
+    // 2. 재귀적 관계 직렬화 (ServiceRegistry 사용)
     if (this.config.serialize?.relations) {
       Object.entries(this.config.serialize.relations).forEach(
         ([relationField, modelName]) => {

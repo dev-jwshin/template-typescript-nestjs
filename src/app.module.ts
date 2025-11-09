@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
+import { ProfilesModule } from './modules/profiles/profiles.module';
 import { PrismaModule } from './database/prisma.module';
 import { CacheModule } from './common/cache/cache.module';
 import { JsonApiTransformMiddleware } from './common/middlewares/jsonapi-transform.middleware';
@@ -34,6 +35,7 @@ import { JsonApiTransformInterceptor } from './common/interceptors/jsonapi-trans
     // 기능 모듈
     HealthModule,
     UsersModule,
+    ProfilesModule,
   ],
   controllers: [AppController],
   providers: [
