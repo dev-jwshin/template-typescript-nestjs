@@ -152,6 +152,28 @@ export interface CrudConfig {
      * 예: 날짜 포맷 변경, 추가 필드 계산 등
      */
     transform?: (data: any) => any;
+
+    /**
+     * 관계 직렬화 설정
+     *
+     * include로 가져온 관계 데이터의 직렬화 규칙을 정의합니다.
+     * 키는 관계 필드명, 값은 해당 관계 모델의 Prisma 모델명(소문자, 단수형)입니다.
+     *
+     * 예시:
+     * ```typescript
+     * serialize: {
+     *   relations: {
+     *     comments: 'comment',  // comments 관계 → comment 모델 서비스 사용
+     *     author: 'user',       // author 관계 → user 모델 서비스 사용
+     *     profile: 'profile',   // profile 관계 → profile 모델 서비스 사용
+     *   }
+     * }
+     * ```
+     *
+     * 이렇게 설정하면 include로 가져온 관계 데이터도
+     * 해당 모델 서비스의 serialize 설정이 자동 적용됩니다.
+     */
+    relations?: Record<string, string>;
   };
 
   /**
