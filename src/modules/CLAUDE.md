@@ -65,6 +65,7 @@ src/modules/
     │       └── [feature].e2e-spec.ts
     │
     ├── [feature].entity.ts             # Prisma 엔티티 타입 (필수)
+    ├── [feature].serializer.ts         # 파일 기반 Serializer (권장) ⭐
     ├── [feature].service.ts            # 비즈니스 로직 (필수)
     └── [feature].module.ts             # 모듈 정의 (필수)
 ```
@@ -93,8 +94,9 @@ src/modules/users/
 │       └── users.e2e-spec.ts
 │
 ├── user.entity.ts                     # User 엔티티 타입
+├── user.serializer.ts                 # User 직렬화 규칙 (password 제외 등)
 ├── users.service.ts                   # 사용자 비즈니스 로직
-└── users.module.ts                    # Users 모듈 정의
+└── users.module.ts                    # Users 모듈 정의 + Serializer 등록
 ```
 
 ---
@@ -332,7 +334,109 @@ export type SafeUser = Omit<User, 'password'>;
 export type PublicUser = Pick<User, 'id' | 'name' | 'createdAt'>;
 ```
 
-### 2. [feature].service.ts (필수)
+### 2. [feature].serializer.ts (권장) ⭐
+
+**역할**: 파일 기반 직렬화 규칙 정의
+
+**사용 시기**:
+- Entity에 민감 정보가 포함된 경우 (password, apiKey 등)
+- 관계 데이터의 재귀적 직렬화가 필요한 경우
+- 직렬화 로직을 중앙에서 관리하고 싶을 때
+
+**특징**:
+- `BaseSerializer<T>` 상속으로 표준화된 직렬화 구현
+- `excludeFields`로 민감 정보 자동 제외
+- `relations`로 재귀적 관계 직렬화 자동 처리
+- `transform()`으로 커스텀 변환 로직 구현
+- Config 기반 직렬화보다 우선순위 높음
+
+**예시**:
+
+```typescript
+// user.serializer.ts
+import { BaseSerializer } from '../../common/crud/serializers/base.serializer';
+import { User } from './user.entity';
+
+/**
+ * UserSerializer
+ *
+ * User 엔티티의 직렬화 규칙 정의
+ */
+export class UserSerializer extends BaseSerializer<User> {
+  /**
+   * 응답에서 제외할 필드
+   */
+  protected excludeFields = ['password', 'resetToken'];
+
+  /**
+   * 관계 직렬화 매핑
+   * - profile: User.profile → ProfileSerializer 자동 적용
+   */
+  protected relations = {
+    profile: 'profile',  // ProfileSerializer 사용
+  };
+
+  /**
+   * 커스텀 변환 함수 (선택사항)
+   */
+  protected transform(data: Partial<User>): Partial<User> {
+    return {
+      ...data,
+      // 예: 추가 필드 계산
+      fullName: `${data.firstName} ${data.lastName}`,
+    };
+  }
+}
+```
+
+**모듈에 등록**:
+
+```typescript
+// users.module.ts
+import { Module, OnModuleInit } from '@nestjs/common';
+import { SerializerRegistry } from '../../common/crud/serializers/serializer-registry';
+import { UserSerializer } from './user.serializer';
+
+@Module({
+  // ...
+})
+export class UsersModule implements OnModuleInit {
+  onModuleInit() {
+    // UserSerializer를 SerializerRegistry에 등록
+    SerializerRegistry.register('user', new UserSerializer());
+  }
+}
+```
+
+**자동 적용 결과**:
+
+```bash
+# API 호출
+GET /api/users/123?include=profile
+
+# ✅ 자동 직렬화 결과
+{
+  "id": "123",
+  "name": "John Doe",
+  "email": "john@example.com",
+  // "password" ✅ 자동 제외됨 (UserSerializer)
+  "profile": {
+    "id": "456",
+    "bio": "Software Engineer",
+    // "phone" ✅ 자동 제외됨 (ProfileSerializer)
+  }
+}
+```
+
+**장점**:
+- ✅ 직렬화 로직 중앙화 (한 파일에서 관리)
+- ✅ 재귀적 관계 직렬화 자동 처리
+- ✅ 타입 안전성 보장
+- ✅ 테스트 용이성
+
+**참고 문서**: [파일 기반 Serializer 가이드](../../docs/FILE_BASED_SERIALIZER.md)
+
+### 3. [feature].service.ts (필수)
 
 **역할**: 비즈니스 로직 구현
 
@@ -394,7 +498,7 @@ export class UsersService extends CrudBaseService<User> {
 }
 ```
 
-### 3. [feature].module.ts (필수)
+### 4. [feature].module.ts (필수)
 
 **역할**: NestJS 모듈 정의 및 의존성 주입
 
@@ -405,15 +509,18 @@ export class UsersService extends CrudBaseService<User> {
 - 컨트롤러, 프로바이더 등록
 - 다른 모듈 import
 - 서비스 export (다른 모듈에서 사용 가능)
+- **파일 기반 Serializer 등록** (OnModuleInit 구현)
 
 **예시**:
 
 ```typescript
 // users.module.ts
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UsersController } from './api/users.controller';
 import { AdminUsersController } from './admin/users.controller';
+import { SerializerRegistry } from '../../common/crud/serializers/serializer-registry';
+import { UserSerializer } from './user.serializer';
 
 @Module({
   controllers: [
@@ -423,7 +530,14 @@ import { AdminUsersController } from './admin/users.controller';
   providers: [UsersService],
   exports: [UsersService], // 다른 모듈에서 사용 가능
 })
-export class UsersModule {}
+export class UsersModule implements OnModuleInit {
+  /**
+   * 모듈 초기화 시 Serializer 등록
+   */
+  onModuleInit() {
+    SerializerRegistry.register('user', new UserSerializer());
+  }
+}
 ```
 
 ---
@@ -455,6 +569,9 @@ cd src/modules/posts
 
 # 엔티티 타입
 touch post.entity.ts
+
+# Serializer (권장)
+touch post.serializer.ts
 
 # DTO 생성
 mkdir dto
@@ -510,7 +627,29 @@ import { Post as PrismaPost } from '@prisma/client';
 export type Post = PrismaPost;
 ```
 
-#### Step 4: DTO 생성
+#### Step 4: Serializer 생성 (권장)
+
+```typescript
+// src/modules/posts/post.serializer.ts
+import { BaseSerializer } from '../../common/crud/serializers/base.serializer';
+import { Post } from './post.entity';
+
+export class PostSerializer extends BaseSerializer<Post> {
+  /**
+   * 응답에서 제외할 필드 (예: 초안 여부)
+   */
+  protected excludeFields = ['isDraft'];
+
+  /**
+   * 관계 직렬화 매핑
+   */
+  protected relations = {
+    author: 'user',  // Post.author → UserSerializer 사용
+  };
+}
+```
+
+#### Step 5: DTO 생성
 
 ```typescript
 // src/modules/posts/dto/create-post.dto.ts
@@ -541,7 +680,7 @@ import { CreatePostDto } from './create-post.dto';
 export class UpdatePostDto extends PartialType(CreatePostDto) {}
 ```
 
-#### Step 5: 서비스 생성
+#### Step 6: 서비스 생성
 
 ```typescript
 // src/modules/posts/posts.service.ts
@@ -592,7 +731,7 @@ export class PostsService extends CrudBaseService<Post> {
 }
 ```
 
-#### Step 6: 컨트롤러 생성
+#### Step 7: 컨트롤러 생성
 
 ```typescript
 // src/modules/posts/api/posts.controller.ts
@@ -654,24 +793,33 @@ export class AdminPostsController {
 }
 ```
 
-#### Step 7: 모듈 정의
+#### Step 8: 모듈 정의 + Serializer 등록
 
 ```typescript
 // src/modules/posts/posts.module.ts
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { PostsController } from './api/posts.controller';
 import { AdminPostsController } from './admin/posts.controller';
+import { SerializerRegistry } from '../../common/crud/serializers/serializer-registry';
+import { PostSerializer } from './post.serializer';
 
 @Module({
   controllers: [PostsController, AdminPostsController],
   providers: [PostsService],
   exports: [PostsService],
 })
-export class PostsModule {}
+export class PostsModule implements OnModuleInit {
+  /**
+   * 모듈 초기화 시 Serializer 등록
+   */
+  onModuleInit() {
+    SerializerRegistry.register('post', new PostSerializer());
+  }
+}
 ```
 
-#### Step 8: AppModule에 등록
+#### Step 9: AppModule에 등록
 
 ```typescript
 // src/app.module.ts
@@ -687,7 +835,7 @@ import { PostsModule } from './modules/posts/posts.module';
 export class AppModule {}
 ```
 
-#### Step 9: 테스트 작성
+#### Step 10: 테스트 작성
 
 ```typescript
 // src/modules/posts/test/unit/posts.service.spec.ts
