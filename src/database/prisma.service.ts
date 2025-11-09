@@ -12,7 +12,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    * 모듈 초기화 시 데이터베이스 연결
    */
   async onModuleInit() {
-    await this.$connect();
+    try {
+      await this.$connect();
+      console.log('✅ Database connected');
+    } catch (error) {
+      console.warn('⚠️  Database connection failed, continuing without database');
+      console.warn(error.message);
+    }
   }
 
   /**
