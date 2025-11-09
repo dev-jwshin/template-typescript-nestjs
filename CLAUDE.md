@@ -111,17 +111,16 @@ template-typescript-nestjs/
 
 ### 모듈 구조 상세 설명
 
-**실제 예시**: `users` 모듈
+**실제 예시**: `users` 모듈 (현재 프로젝트)
 
 ```
-📂 modules/users/
+📂 src/modules/users/
 │
 ├── 📂 admin/                          # 관리자 전용 컨트롤러
-│   └── users.controller.ts           # 관리자 API 엔드포인트
+│   └── users.controller.ts           # 관리자용 @Crud 데코레이터 API
 │
-├── 📂 api/                            # 일반 API 컨트롤러
-│   ├── users-crud.controller.ts      # @Crud 데코레이터 방식
-│   └── users-jsonapi.controller.ts   # JSON:API 전용
+├── 📂 api/                            # 일반 사용자 API 컨트롤러
+│   └── users.controller.ts           # JSON:API 전용 @Crud 데코레이터 API
 │
 ├── 📂 dto/                            # 데이터 전송 객체
 │   ├── create-user.dto.ts            # 생성 DTO
@@ -129,26 +128,33 @@ template-typescript-nestjs/
 │   ├── update-user.dto.ts            # 수정 DTO
 │   └── update-user.dto.spec.ts       # 수정 DTO 테스트
 │
-├── 📂 interfaces/                     # 타입 인터페이스 (선택)
+├── 📂 interfaces/                     # 타입 인터페이스 (현재 비어있음)
 │
 ├── user.entity.ts                     # Prisma 엔티티 타입
-├── users.service.ts                   # 비즈니스 로직
-├── users.service.spec.ts              # 서비스 유닛 테스트
+├── users.service.ts                   # 비즈니스 로직 (CrudBaseService 상속)
+├── users.service.spec.ts              # 서비스 유닛 테스트 (100% 커버리지)
 └── users.module.ts                    # NestJS 모듈 정의
 ```
 
 **폴더별 역할**:
 
-| 폴더/파일 | 필수 | 역할 |
-|----------|------|------|
-| `admin/` | ❌ 선택 | 관리자 전용 API (백오피스) |
-| `api/` | ✅ 필수 | 일반 사용자 API |
-| `dto/` | ✅ 필수 | 요청 검증 및 타입 정의 |
-| `interfaces/` | ❌ 선택 | 공통 인터페이스 |
-| `[feature].entity.ts` | ✅ 필수 | Prisma 엔티티 타입 |
-| `[feature].service.ts` | ✅ 필수 | 비즈니스 로직 |
-| `[feature].service.spec.ts` | ✅ 필수 | 서비스 테스트 |
-| `[feature].module.ts` | ✅ 필수 | NestJS 모듈 |
+| 폴더/파일 | 필수 | 역할 | 설명 |
+|----------|------|------|------|
+| `admin/` | ❌ 선택 | 관리자 전용 API | 백오피스 관리 기능 |
+| `api/` | ✅ 필수 | 일반 사용자 API | 서비스 핵심 API |
+| `dto/` | ✅ 필수 | 요청 검증 및 타입 정의 | class-validator 사용 |
+| `interfaces/` | ❌ 선택 | 공통 타입 인터페이스 | TypeScript 인터페이스 |
+| `[feature].entity.ts` | ✅ 필수 | Prisma 엔티티 타입 | 데이터베이스 모델 타입 |
+| `[feature].service.ts` | ✅ 필수 | 비즈니스 로직 | CrudBaseService 상속 권장 |
+| `[feature].service.spec.ts` | ✅ 필수 | 서비스 유닛 테스트 | Jest 기반 테스트 |
+| `[feature].module.ts` | ✅ 필수 | NestJS 모듈 정의 | 컨트롤러/서비스 등록 |
+
+**현재 users 모듈 특징**:
+- ✅ 관리자/일반 API 분리 구조 (`admin/`, `api/`)
+- ✅ @Crud 데코레이터로 80% 코드 감소
+- ✅ JSON:API 1.1 완전 준수
+- ✅ 서비스 레이어 100% 테스트 커버리지
+- ✅ CrudBaseService 상속으로 자동 CRUD 구현
 
 ---
 
