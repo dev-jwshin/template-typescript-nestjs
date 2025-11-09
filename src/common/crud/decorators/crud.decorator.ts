@@ -1,5 +1,6 @@
 import { CrudConfig } from '../types';
 import { CrudMetadataStorage } from '../metadata';
+import { CrudConfigMetadataStorage } from '../metadata/crud-config-metadata.storage';
 import { CrudRouteFactory } from '../factories/crud-route.factory';
 
 /**
@@ -36,8 +37,11 @@ import { CrudRouteFactory } from '../factories/crud-route.factory';
  */
 export function Crud(config: CrudConfig): ClassDecorator {
   return function (target: Function) {
-    // 1. 메타데이터 저장
+    // 1. 메타데이터 저장 (기존 저장소)
     CrudMetadataStorage.setCrudConfig(target, config);
+
+    // 2. CrudConfig 메타데이터 저장 (Service 주입용) ⭐ 신규
+    CrudConfigMetadataStorage.set(target, config);
 
     // 2. 플러그인 초기화
     if (config.plugins && config.plugins.length > 0) {

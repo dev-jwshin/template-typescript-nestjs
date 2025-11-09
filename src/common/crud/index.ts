@@ -24,6 +24,13 @@ export * from './services/crud-hook-executor.service';
 // 메타데이터
 export * from './metadata';
 export * from './metadata/crud-hook-metadata.storage';
+export * from './metadata/crud-config-metadata.storage';
+
+// 상수
+export * from './constants/crud-config.token';
+
+// Provider
+export * from './providers/crud-config.provider';
 
 // 인터셉터
 export * from './interceptors';
