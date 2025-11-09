@@ -66,22 +66,20 @@ template-typescript-nestjs/
 │   │   ├── prisma.service.ts
 │   │   └── prisma.module.ts
 │   │
-│   └── modules/                      # 기능 모듈
-│       ├── health/                   # 헬스체크 모듈
-│       └── users/                    # 사용자 모듈 (예시)
-│           ├── admin/                # 관리자용 컨트롤러
-│           │   └── users.controller.ts
-│           ├── api/                  # API용 컨트롤러
-│           │   ├── users-crud.controller.ts
-│           │   └── users-jsonapi.controller.ts
-│           ├── dto/                  # DTO 정의
-│           │   ├── create-user.dto.ts
-│           │   └── update-user.dto.ts
-│           ├── interfaces/           # 인터페이스
-│           ├── user.entity.ts        # Prisma 엔티티
-│           ├── users.service.ts      # 비즈니스 로직
-│           ├── users.service.spec.ts # 서비스 테스트
-│           └── users.module.ts       # 모듈 정의
+│   └── modules/                         # 기능 모듈
+│       ├── health/                      # 헬스체크 모듈
+│       └── {module_name}/               # 모듈
+│           ├── admin/                   # 관리자용 컨트롤러
+│           │   └── {module_name}.controller.ts
+│           ├── api/                     # API용 컨트롤러
+│           │   └── {module_name}.controller.ts
+│           ├── dto/                     # DTO 정의
+│           │   ├── create.dto.ts
+│           │   └── update.dto.ts
+│           ├── interfaces/              # 인터페이스
+│           ├── {module_name}.entity.ts  # Prisma 엔티티
+│           ├── {module_name}.service.ts # 비즈니스 로직
+│           └── {module_name}.module.ts  # 모듈 정의
 │
 ├── prisma/                           # Prisma 설정
 │   ├── schema.prisma                 # 데이터베이스 스키마
@@ -118,11 +116,11 @@ import { UsersService } from '../users.service';
 @Crud({
   // 생성할 엔드포인트
   only: [
-    CrudOperation.Index,   // GET /api/users
-    CrudOperation.Show,    // GET /api/users/:id
-    CrudOperation.Create,  // POST /api/users
-    CrudOperation.Update,  // PATCH /api/users/:id
-    CrudOperation.Delete,  // DELETE /api/users/:id
+    CrudOperation.Index, // GET /api/users
+    CrudOperation.Show, // GET /api/users/:id
+    CrudOperation.Create, // POST /api/users
+    CrudOperation.Update, // PATCH /api/users/:id
+    CrudOperation.Delete, // DELETE /api/users/:id
   ],
 
   // JSON:API 리소스 타입
@@ -151,6 +149,7 @@ export class UsersController {
 ```
 
 **지원 기능**:
+
 - ✅ 13가지 필터 연산자 (eq, ne, gt, gte, lt, lte, like, ilike, in, nin, between, isNull, isNotNull)
 - ✅ Sparse Fieldsets (`?fields[users]=name,email`)
 - ✅ Sorting (`?sort=-createdAt,name`)
@@ -163,6 +162,7 @@ export class UsersController {
 ### 2. JSON:API 1.1 완전 준수
 
 **요청 예시**:
+
 ```bash
 # 사용자 생성
 curl -X POST http://localhost:3000/api/users \
@@ -180,6 +180,7 @@ curl -X POST http://localhost:3000/api/users \
 ```
 
 **응답 예시**:
+
 ```json
 {
   "jsonapi": { "version": "1.1" },
@@ -201,6 +202,7 @@ curl -X POST http://localhost:3000/api/users \
 ### 3. Prisma ORM
 
 **스키마 정의**:
+
 ```prisma
 // prisma/schema.prisma
 model User {
@@ -217,6 +219,7 @@ model User {
 ```
 
 **주요 명령어**:
+
 ```bash
 # 스키마 변경 후 마이그레이션
 pnpm prisma:migrate
@@ -236,6 +239,7 @@ pnpm prisma:seed
 ### 4. Redis 캐싱 (Optional)
 
 **설정**:
+
 ```env
 # .env
 CACHE_ENABLED=true
@@ -247,6 +251,7 @@ CACHE_TTL=3600
 ```
 
 **사용 예시**:
+
 ```typescript
 import { CacheService } from './common/cache/cache.service';
 
@@ -294,6 +299,7 @@ export class UsersService {
    - 주석은 한글로 작성
 
 **좋은 예시**:
+
 ```typescript
 /**
  * 사용자 생성
@@ -351,6 +357,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Type**:
+
 - `feat`: 새로운 기능
 - `fix`: 버그 수정
 - `refactor`: 코드 리팩토링
@@ -360,6 +367,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - `perf`: 성능 개선
 
 **예시**:
+
 ```
 feat: 사용자 인증 기능 추가
 
@@ -386,6 +394,7 @@ nest g controller modules/posts/api/posts
 ```
 
 **수동 생성 체크리스트**:
+
 1. ✅ `modules/posts/` 폴더 생성
 2. ✅ `posts.entity.ts` - Prisma 스키마에 모델 추가 후 타입 정의
 3. ✅ `posts.service.ts` - 비즈니스 로직 (CrudBaseService 상속)
@@ -471,6 +480,7 @@ test/
 ### 테스트 작성 가이드
 
 **서비스 유닛 테스트 예시**:
+
 ```typescript
 // users.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
@@ -493,10 +503,7 @@ describe('UsersService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UsersService,
-        { provide: PrismaService, useValue: mockPrismaService },
-      ],
+      providers: [UsersService, { provide: PrismaService, useValue: mockPrismaService }],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
@@ -549,6 +556,7 @@ All files                         |   35.37 |    30.11 |   31.12 |   35.21
 ### 환경 변수
 
 **필수 환경 변수** (`.env`):
+
 ```env
 # 애플리케이션
 NODE_ENV=production
@@ -609,30 +617,35 @@ docker-compose logs -f api
 ### 자주 발생하는 문제
 
 **1. Prisma Client 오류**
+
 ```bash
 # 해결: Prisma Client 재생성
 pnpm prisma:generate
 ```
 
 **2. 마이그레이션 충돌**
+
 ```bash
 # 해결: 데이터베이스 리셋
 pnpm db:reset
 ```
 
 **3. 포트 충돌**
+
 ```bash
 # 해결: .env에서 PORT 변경
 PORT=3001
 ```
 
 **4. Redis 연결 실패**
+
 ```bash
 # 해결: Redis 비활성화
 CACHE_ENABLED=false
 ```
 
 **5. 테스트 실패**
+
 ```bash
 # 해결: node_modules 재설치
 rm -rf node_modules pnpm-lock.yaml
@@ -646,6 +659,7 @@ pnpm install
 ### 효과적인 프롬프트 작성
 
 **좋은 예시**:
+
 ```
 "users 모듈에 이메일 인증 기능을 추가해줘.
 - 이메일 발송은 Nodemailer 사용
@@ -654,6 +668,7 @@ pnpm install
 ```
 
 **나쁜 예시**:
+
 ```
 "이메일 인증 추가해줘"
 ```
