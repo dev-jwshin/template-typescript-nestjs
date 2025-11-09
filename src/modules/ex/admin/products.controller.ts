@@ -127,11 +127,15 @@ import { IsString } from 'class-validator';
    * 페이지네이션 설정
    *
    * @description
-   * 관리자는 더 많은 데이터를 한 번에 조회할 수 있습니다.
+   * 목록 조회 시 페이지네이션 기본값 및 제한값을 설정합니다.
+   *
+   * @remarks
+   * - defaultLimit: 클라이언트가 page[size]를 지정하지 않을 때 기본값
+   * - limit: 한 번에 조회할 수 있는 최대 개수 (성능 및 부하 방지)
    */
   pagination: {
-    defaultLimit: 50, // 기본: 50개씩 (일반 사용자: 20개)
-    limit: 500, // 최대: 500개까지 (일반 사용자: 100개)
+    defaultLimit: 20, // 기본: 20개씩
+    limit: 100, // 최대: 100개까지
   },
 
   /**
