@@ -81,13 +81,18 @@ template-typescript-nestjs/
 │           │
 │           ├── 📂 dto/                         # DTO 정의
 │           │   ├── create-[feature].dto.ts
-│           │   └── update-[feature].dto.ts
+│           │   ├── create-[feature].dto.spec.ts
+│           │   ├── update-[feature].dto.ts
+│           │   └── update-[feature].dto.spec.ts
 │           │
 │           ├── 📂 interfaces/                  # 인터페이스 (선택)
 │           │
+│           ├── 📂 test/                        # 테스트 파일
+│           │   ├── 📂 unit/                    # 유닛 테스트
+│           │   └── 📂 e2e/                     # E2E 테스트
+│           │
 │           ├── [feature].entity.ts             # Prisma 엔티티
 │           ├── [feature].service.ts            # 비즈니스 로직
-│           ├── [feature].service.spec.ts       # 서비스 테스트
 │           └── [feature].module.ts             # 모듈 정의
 │
 ├── 📂 prisma/                                  # Prisma 설정
@@ -124,15 +129,18 @@ template-typescript-nestjs/
 │
 ├── 📂 dto/                            # 데이터 전송 객체
 │   ├── create-user.dto.ts            # 생성 DTO
-│   ├── create-user.dto.spec.ts       # 생성 DTO 테스트
+│   ├── create-user.dto.spec.ts       # 생성 DTO 검증 테스트
 │   ├── update-user.dto.ts            # 수정 DTO
-│   └── update-user.dto.spec.ts       # 수정 DTO 테스트
+│   └── update-user.dto.spec.ts       # 수정 DTO 검증 테스트
 │
 ├── 📂 interfaces/                     # 타입 인터페이스 (현재 비어있음)
 │
+├── 📂 test/                           # 테스트 파일 (NEW ⭐)
+│   ├── 📂 unit/                       # 유닛 테스트
+│   └── 📂 e2e/                        # E2E 테스트
+│
 ├── user.entity.ts                     # Prisma 엔티티 타입
 ├── users.service.ts                   # 비즈니스 로직 (CrudBaseService 상속)
-├── users.service.spec.ts              # 서비스 유닛 테스트 (100% 커버리지)
 └── users.module.ts                    # NestJS 모듈 정의
 ```
 
@@ -144,17 +152,20 @@ template-typescript-nestjs/
 | `api/` | ✅ 필수 | 일반 사용자 API | 서비스 핵심 API |
 | `dto/` | ✅ 필수 | 요청 검증 및 타입 정의 | class-validator 사용 |
 | `interfaces/` | ❌ 선택 | 공통 타입 인터페이스 | TypeScript 인터페이스 |
+| `test/` | ✅ 필수 | 테스트 파일 모음 | unit/, e2e/ 서브폴더 |
+| `test/unit/` | ✅ 필수 | 유닛 테스트 | 서비스, 헬퍼 함수 테스트 |
+| `test/e2e/` | ✅ 필수 | E2E 테스트 | 통합 시나리오 테스트 |
 | `[feature].entity.ts` | ✅ 필수 | Prisma 엔티티 타입 | 데이터베이스 모델 타입 |
 | `[feature].service.ts` | ✅ 필수 | 비즈니스 로직 | CrudBaseService 상속 권장 |
-| `[feature].service.spec.ts` | ✅ 필수 | 서비스 유닛 테스트 | Jest 기반 테스트 |
 | `[feature].module.ts` | ✅ 필수 | NestJS 모듈 정의 | 컨트롤러/서비스 등록 |
 
 **현재 users 모듈 특징**:
 - ✅ 관리자/일반 API 분리 구조 (`admin/`, `api/`)
 - ✅ @Crud 데코레이터로 80% 코드 감소
 - ✅ JSON:API 1.1 완전 준수
-- ✅ 서비스 레이어 100% 테스트 커버리지
+- ✅ 테스트 파일 체계화 (`test/unit/`, `test/e2e/`)
 - ✅ CrudBaseService 상속으로 자동 CRUD 구현
+- ✅ DTO 레벨 검증 테스트 포함
 
 ---
 
@@ -385,16 +396,19 @@ async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
 modules/[feature-name]/
 ├── admin/                    # 관리자용 컨트롤러 (선택사항)
 │   └── [feature].controller.ts
-├── api/                      # API용 컨트롤러
-│   ├── [feature]-crud.controller.ts
-│   └── [feature]-jsonapi.controller.ts
+├── api/                      # API용 컨트롤러 (필수)
+│   └── [feature].controller.ts
 ├── dto/                      # DTO 정의
 │   ├── create-[feature].dto.ts
-│   └── update-[feature].dto.ts
+│   ├── create-[feature].dto.spec.ts
+│   ├── update-[feature].dto.ts
+│   └── update-[feature].dto.spec.ts
 ├── interfaces/               # 인터페이스 (선택사항)
+├── test/                     # 테스트 파일 (필수)
+│   ├── unit/                 # 유닛 테스트
+│   └── e2e/                  # E2E 테스트
 ├── [feature].entity.ts       # Prisma 엔티티
 ├── [feature].service.ts      # 비즈니스 로직
-├── [feature].service.spec.ts # 서비스 테스트
 └── [feature].module.ts       # 모듈 정의
 ```
 
