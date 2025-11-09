@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, Controller, Injectable } from '@nestjs/common';
-import * as request from 'supertest';
-import { Crud } from '../src/common/crud/decorators/crud.decorator';
-import { BeforeCreate, AfterCreate } from '../src/common/crud/decorators/hook.decorator';
-import { ParsedBody, CreatedEntity } from '../src/common/crud/decorators/param.decorator';
-import { CrudOperation } from '../src/common/crud/types/crud-operation.enum';
-import { withCachingOptions } from '../src/common/crud/plugins/caching.plugin';
-import { CrudPerformanceService } from '../src/common/crud/services/crud-performance.service';
+import request from 'supertest';
+import { Crud } from '../decorators/crud.decorator';
+import { BeforeCreate, AfterCreate } from '../decorators/hook.decorator';
+import { ParsedBody, CreatedEntity } from '../decorators/param.decorator';
+import { CrudOperation } from '../types/crud-operation.enum';
+import { withCachingOptions } from '../plugins/caching.plugin';
+import { CrudPerformanceService } from '../services/crud-performance.service';
 
 /**
  * Mock Service for Benchmark

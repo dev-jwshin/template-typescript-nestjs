@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { JsonApiExceptionFilter } from '../src/common/filters/jsonapi-exception.filter';
-import { PrismaService } from '../src/database/prisma.service';
+import { AppModule } from '../../../../app.module';
+import { JsonApiExceptionFilter } from '../../../filters/jsonapi-exception.filter';
+import { PrismaService } from '../../../../database/prisma.service';
 
 /**
  * 글로벌 인터셉터 E2E 테스트

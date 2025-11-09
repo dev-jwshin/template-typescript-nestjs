@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, Injectable, Controller } from '@nestjs/common';
 import request from 'supertest';
-import { Crud } from '../src/common/crud/decorators/crud.decorator';
+import { Crud } from '../../decorators/crud.decorator';
 import {
   BeforeCreate,
   AfterCreate,
@@ -11,16 +11,16 @@ import {
   AfterDelete,
   Before,
   After,
-} from '../src/common/crud/decorators/hook.decorator';
+} from '../../decorators/hook.decorator';
 import {
   ParsedBody,
   CreatedEntity,
   UpdatedEntity,
   DeletedEntity,
-} from '../src/common/crud/decorators/param.decorator';
-import { CrudOperation } from '../src/common/crud/types/crud-operation.enum';
-import { AuditLogPlugin } from '../src/common/crud/plugins/audit-log.plugin';
-import { CrudPlugin } from '../src/common/crud/plugins/crud-plugin.interface';
+} from '../../decorators/param.decorator';
+import { CrudOperation } from '../../types/crud-operation.enum';
+import { AuditLogPlugin } from '../../plugins/audit-log.plugin';
+import { CrudPlugin } from '../../plugins/crud-plugin.interface';
 
 /**
  * 테스트용 Mock Service

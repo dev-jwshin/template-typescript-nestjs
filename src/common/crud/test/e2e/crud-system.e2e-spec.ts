@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { PrismaService } from '../src/database/prisma.service';
+import { AppModule } from '../../../../app.module';
+import { PrismaService } from '../../../../database/prisma.service';
 
 /**
  * CRUD 시스템 통합 테스트
