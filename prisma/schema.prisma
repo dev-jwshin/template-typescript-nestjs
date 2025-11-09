@@ -75,6 +75,28 @@ model Post {
   @@index([createdAt])
 }
 
+// 상품 모델 (CRUD 예제용)
+model Product {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String?
+  price       Decimal   @db.Decimal(10, 2)
+  stock       Int       @default(0)
+  category    String
+  isActive    Boolean   @default(true)
+  tags        String[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // Soft delete 지원
+
+  @@map("products")
+  @@index([slug])
+  @@index([category])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
 // 감사 로그 모델 (AuditLogPlugin 지원)
 model AuditLog {
   id           String   @id @default(uuid())
