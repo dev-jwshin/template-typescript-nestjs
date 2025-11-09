@@ -1,8 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Controller, Injectable, Inject } from '@nestjs/common';
 import { CrudBaseService, ServiceRegistry } from '../index';
 import { PrismaService } from '../../../database/prisma.service';
 import { BaseSerializer } from '../serializers/base.serializer';
 import { SerializerRegistry } from '../serializers/serializer-registry';
+import { Crud } from '../decorators/crud.decorator';
+import { CrudOperation } from '../types/crud-operation.enum';
+import { createCrudConfigProvider } from '../providers/crud-config.provider';
+import { CRUD_CONFIG } from '../constants/crud-config.token';
+import { CrudConfig } from '../types/crud-config.interface';
 
 /**
  * 재귀적 직렬화 테스트
@@ -43,20 +49,47 @@ describe('Recursive Serialization', () => {
     };
   }
 
-  // Comment 테스트 서비스
+  // Comment 테스트 서비스 (Service를 먼저 선언)
+  @Injectable()
   class CommentsTestService extends CrudBaseService<any> {
-    constructor(prisma: PrismaService) {
-      super(prisma, 'comment', {});
+    constructor(
+      prisma: PrismaService,
+      @Inject(CRUD_CONFIG) config: CrudConfig,
+    ) {
+      super(prisma, 'comment', config);
     }
   }
 
-  // Post 테스트 서비스
+  // Comment 테스트 컨트롤러 (DI를 위한 @Crud 데코레이터 적용)
+  @Crud({
+    only: [CrudOperation.Index, CrudOperation.Show],
+    resourceType: 'comments',
+  })
+  @Controller('comments')
+  class CommentsTestController {
+    constructor(public readonly commentsService: CommentsTestService) {}
+  }
+
+  // Post 테스트 서비스 (Service를 먼저 선언)
+  @Injectable()
   class PostsTestService extends CrudBaseService<any> {
-    constructor(prisma: PrismaService) {
-      super(prisma, 'post', {
-        allowedIncludes: ['comments'],
-      });
+    constructor(
+      prisma: PrismaService,
+      @Inject(CRUD_CONFIG) config: CrudConfig,
+    ) {
+      super(prisma, 'post', config);
     }
+  }
+
+  // Post 테스트 컨트롤러 (DI를 위한 @Crud 데코레이터 적용)
+  @Crud({
+    only: [CrudOperation.Index, CrudOperation.Show],
+    resourceType: 'posts',
+    allowedIncludes: ['comments'],
+  })
+  @Controller('posts')
+  class PostsTestController {
+    constructor(public readonly postsService: PostsTestService) {}
   }
 
   beforeEach(async () => {
@@ -65,18 +98,13 @@ describe('Recursive Serialization', () => {
     SerializerRegistry.clear();
 
     const module: TestingModule = await Test.createTestingModule({
+      controllers: [CommentsTestController, PostsTestController],
       providers: [
         { provide: PrismaService, useValue: mockPrisma },
-        {
-          provide: CommentsTestService,
-          useFactory: (prisma: PrismaService) => new CommentsTestService(prisma),
-          inject: [PrismaService],
-        },
-        {
-          provide: PostsTestService,
-          useFactory: (prisma: PrismaService) => new PostsTestService(prisma),
-          inject: [PrismaService],
-        },
+        CommentsTestService,
+        PostsTestService,
+        createCrudConfigProvider(CommentsTestController),
+        createCrudConfigProvider(PostsTestController),
       ],
     }).compile();
 
@@ -220,21 +248,32 @@ describe('Recursive Serialization', () => {
 
   describe('관계 설정이 없는 경우', () => {
     it('Serializer 미등록 시 관계 데이터는 원본 그대로 반환', async () => {
-      // Serializer 없이 서비스 생성
+      // Serializer 없이 서비스 생성 (DI 사용, Service를 먼저 선언)
+      @Injectable()
       class PostsNoSerializerService extends CrudBaseService<any> {
-        constructor(prisma: PrismaService) {
-          super(prisma, 'postNoRel', {});
+        constructor(
+          prisma: PrismaService,
+          @Inject(CRUD_CONFIG) config: CrudConfig,
+        ) {
+          super(prisma, 'postNoRel', config);
         }
       }
 
+      @Crud({
+        only: [CrudOperation.Show],
+        resourceType: 'postNoRel',
+      })
+      @Controller('postNoRel')
+      class PostsNoSerializerController {
+        constructor(public readonly service: PostsNoSerializerService) {}
+      }
+
       const module = await Test.createTestingModule({
+        controllers: [PostsNoSerializerController],
         providers: [
           { provide: PrismaService, useValue: mockPrisma },
-          {
-            provide: PostsNoSerializerService,
-            useFactory: (prisma: PrismaService) => new PostsNoSerializerService(prisma),
-            inject: [PrismaService],
-          },
+          PostsNoSerializerService,
+          createCrudConfigProvider(PostsNoSerializerController),
         ],
       }).compile();
 
