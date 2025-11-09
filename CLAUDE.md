@@ -146,20 +146,21 @@ template-typescript-nestjs/
 
 **폴더별 역할**:
 
-| 폴더/파일 | 필수 | 역할 | 설명 |
-|----------|------|------|------|
-| `admin/` | ❌ 선택 | 관리자 전용 API | 백오피스 관리 기능 |
-| `api/` | ✅ 필수 | 일반 사용자 API | 서비스 핵심 API |
-| `dto/` | ✅ 필수 | 요청 검증 및 타입 정의 | class-validator 사용 |
-| `interfaces/` | ❌ 선택 | 공통 타입 인터페이스 | TypeScript 인터페이스 |
-| `test/` | ✅ 필수 | 테스트 파일 모음 | unit/, e2e/ 서브폴더 |
-| `test/unit/` | ✅ 필수 | 유닛 테스트 | 서비스, 헬퍼 함수 테스트 |
-| `test/e2e/` | ✅ 필수 | E2E 테스트 | 통합 시나리오 테스트 |
-| `[feature].entity.ts` | ✅ 필수 | Prisma 엔티티 타입 | 데이터베이스 모델 타입 |
-| `[feature].service.ts` | ✅ 필수 | 비즈니스 로직 | CrudBaseService 상속 권장 |
-| `[feature].module.ts` | ✅ 필수 | NestJS 모듈 정의 | 컨트롤러/서비스 등록 |
+| 폴더/파일              | 필수    | 역할                   | 설명                      |
+| ---------------------- | ------- | ---------------------- | ------------------------- |
+| `admin/`               | ❌ 선택 | 관리자 전용 API        | 백오피스 관리 기능        |
+| `api/`                 | ✅ 필수 | 일반 사용자 API        | 서비스 핵심 API           |
+| `dto/`                 | ✅ 필수 | 요청 검증 및 타입 정의 | class-validator 사용      |
+| `interfaces/`          | ❌ 선택 | 공통 타입 인터페이스   | TypeScript 인터페이스     |
+| `test/`                | ✅ 필수 | 테스트 파일 모음       | unit/, e2e/ 서브폴더      |
+| `test/unit/`           | ✅ 필수 | 유닛 테스트            | 서비스, 헬퍼 함수 테스트  |
+| `test/e2e/`            | ✅ 필수 | E2E 테스트             | 통합 시나리오 테스트      |
+| `[feature].entity.ts`  | ✅ 필수 | Prisma 엔티티 타입     | 데이터베이스 모델 타입    |
+| `[feature].service.ts` | ✅ 필수 | 비즈니스 로직          | CrudBaseService 상속 권장 |
+| `[feature].module.ts`  | ✅ 필수 | NestJS 모듈 정의       | 컨트롤러/서비스 등록      |
 
 **현재 users 모듈 특징**:
+
 - ✅ 관리자/일반 API 분리 구조 (`admin/`, `api/`)
 - ✅ @Crud 데코레이터로 80% 코드 감소
 - ✅ JSON:API 1.1 완전 준수
@@ -420,10 +421,6 @@ modules/[feature-name]/
 <type>: <subject>
 
 <body>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Type**:
