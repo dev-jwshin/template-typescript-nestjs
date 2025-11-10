@@ -1,0 +1,48 @@
+{
+  "http": {
+    "badRequest": "Bad request.",
+    "unauthorized": "Authentication required.",
+    "forbidden": "Access forbidden.",
+    "notFound": "Resource not found.",
+    "methodNotAllowed": "Method not allowed.",
+    "conflict": "Resource already exists.",
+    "unprocessableEntity": "Unprocessable entity.",
+    "tooManyRequests": "Too many requests.",
+    "internalServerError": "Internal server error occurred.",
+    "serviceUnavailable": "Service temporarily unavailable.",
+    "validationFailed": "Validation failed.",
+    "unexpectedError": "An unexpected error occurred."
+  },
+  "business": {
+    "userNotFound": "User not found.",
+    "userAlreadyExists": "User already exists.",
+    "emailAlreadyExists": "Email already in use.",
+    "invalidCredentials": "Invalid credentials.",
+    "accountLocked": "Account is locked.",
+    "accountDisabled": "Account is disabled.",
+    "tokenExpired": "Token has expired.",
+    "tokenInvalid": "Invalid token.",
+    "resourceNotFound": "{resource} not found.",
+    "resourceAlreadyExists": "{resource} already exists.",
+    "insufficientPermissions": "Insufficient permissions.",
+    "operationNotAllowed": "Operation not allowed.",
+    "invalidOperation": "Invalid operation.",
+    "dataConflict": "Data conflict occurred.",
+    "quotaExceeded": "Quota exceeded.",
+    "fileNotFound": "File not found.",
+    "fileTooLarge": "File is too large.",
+    "invalidFileType": "Invalid file type.",
+    "databaseError": "Database error occurred.",
+    "networkError": "Network error occurred.",
+    "timeoutError": "Request timeout."
+  },
+  "validation": {
+    "required": "{field} is required.",
+    "invalid": "{field} is invalid.",
+    "tooShort": "{field} is too short.",
+    "tooLong": "{field} is too long.",
+    "outOfRange": "{field} is out of range.",
+    "invalidFormat": "{field} has invalid format.",
+    "mustBeUnique": "{field} must be unique."
+  }
+}
