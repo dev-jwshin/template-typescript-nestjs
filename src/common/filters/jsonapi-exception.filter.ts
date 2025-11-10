@@ -1,6 +1,7 @@
 /**
  * JSON:API 에러 필터
  * 모든 예외를 JSON:API 1.1 에러 형식으로 변환
+ * I18n 다국어 지원
  */
 
 import {
@@ -10,8 +11,9 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { I18nContext } from 'nestjs-i18n';
 import { JsonApiDocument, JsonApiError } from '../interfaces/jsonapi.interface';
 
 /**
@@ -32,13 +34,17 @@ export class JsonApiExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+
+    // I18n 컨텍스트 가져오기
+    const i18n = I18nContext.current();
 
     let status: number;
     let errors: JsonApiError[];
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
-      errors = this.parseHttpException(exception);
+      errors = this.parseHttpException(exception, i18n);
     } else {
       // 알 수 없는 에러
       status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -47,11 +53,11 @@ export class JsonApiExceptionFilter implements ExceptionFilter {
           id: uuidv4(),
           status: status.toString(),
           code: 'INTERNAL_SERVER_ERROR',
-          title: 'Internal Server Error',
+          title: i18n?.t('error.http.internalServerError') || 'Internal Server Error',
           detail:
             exception instanceof Error
               ? exception.message
-              : 'An unexpected error occurred',
+              : i18n?.t('error.http.unexpectedError') || 'An unexpected error occurred',
           meta: {
             timestamp: new Date().toISOString(),
           },
@@ -73,13 +79,16 @@ export class JsonApiExceptionFilter implements ExceptionFilter {
   /**
    * HttpException을 JSON:API 에러 배열로 변환
    */
-  private parseHttpException(exception: HttpException): JsonApiError[] {
+  private parseHttpException(
+    exception: HttpException,
+    i18n: I18nContext | undefined,
+  ): JsonApiError[] {
     const status = exception.getStatus();
     const response = exception.getResponse();
 
     // 응답이 객체인 경우 (NestJS 기본 에러 또는 커스텀 에러)
     if (typeof response === 'object' && response !== null) {
-      return this.parseErrorResponse(status, response as any);
+      return this.parseErrorResponse(status, response as any, i18n);
     }
 
     // 응답이 문자열인 경우
@@ -88,7 +97,7 @@ export class JsonApiExceptionFilter implements ExceptionFilter {
         id: uuidv4(),
         status: status.toString(),
         code: ERROR_CODE_MAP[status] || 'UNKNOWN_ERROR',
-        title: this.getDefaultErrorTitle(status),
+        title: this.getDefaultErrorTitle(status, i18n),
         detail: typeof response === 'string' ? response : exception.message,
         meta: {
           timestamp: new Date().toISOString(),
@@ -100,12 +109,16 @@ export class JsonApiExceptionFilter implements ExceptionFilter {
   /**
    * 에러 응답 객체 파싱 (NestJS ValidationPipe 에러 등)
    */
-  private parseErrorResponse(status: number, response: any): JsonApiError[] {
+  private parseErrorResponse(
+    status: number,
+    response: any,
+    i18n: I18nContext | undefined,
+  ): JsonApiError[] {
     const baseError = {
       id: uuidv4(),
       status: status.toString(),
       code: ERROR_CODE_MAP[status] || 'UNKNOWN_ERROR',
-      title: response.error || this.getDefaultErrorTitle(status),
+      title: response.error || this.getDefaultErrorTitle(status, i18n),
       meta: {
         timestamp: new Date().toISOString(),
       },
@@ -125,7 +138,11 @@ export class JsonApiExceptionFilter implements ExceptionFilter {
     return [
       {
         ...baseError,
-        detail: response.message || response.error || 'An error occurred',
+        detail:
+          response.message ||
+          response.error ||
+          i18n?.t('error.http.unexpectedError') ||
+          'An error occurred',
       },
     ];
   }
@@ -146,19 +163,45 @@ export class JsonApiExceptionFilter implements ExceptionFilter {
   }
 
   /**
-   * HTTP 상태 코드에 따른 기본 에러 제목
+   * HTTP 상태 코드에 따른 기본 에러 제목 (I18n 지원)
    */
-  private getDefaultErrorTitle(status: number): string {
-    const titles: Record<number, string> = {
+  private getDefaultErrorTitle(status: number, i18n: I18nContext | undefined): string {
+    // I18n 키 매핑
+    const i18nKeys: Record<number, string> = {
+      [HttpStatus.BAD_REQUEST]: 'error.http.badRequest',
+      [HttpStatus.UNAUTHORIZED]: 'error.http.unauthorized',
+      [HttpStatus.FORBIDDEN]: 'error.http.forbidden',
+      [HttpStatus.NOT_FOUND]: 'error.http.notFound',
+      [HttpStatus.METHOD_NOT_ALLOWED]: 'error.http.methodNotAllowed',
+      [HttpStatus.CONFLICT]: 'error.http.conflict',
+      [HttpStatus.UNPROCESSABLE_ENTITY]: 'error.http.unprocessableEntity',
+      [HttpStatus.TOO_MANY_REQUESTS]: 'error.http.tooManyRequests',
+      [HttpStatus.INTERNAL_SERVER_ERROR]: 'error.http.internalServerError',
+      [HttpStatus.SERVICE_UNAVAILABLE]: 'error.http.serviceUnavailable',
+    };
+
+    // I18n 번역 시도
+    if (i18n && i18nKeys[status]) {
+      const translated = i18n.t(i18nKeys[status]);
+      if (translated && translated !== i18nKeys[status]) {
+        return translated as string;
+      }
+    }
+
+    // Fallback: 영어 기본 메시지
+    const fallbackTitles: Record<number, string> = {
       [HttpStatus.BAD_REQUEST]: 'Bad Request',
       [HttpStatus.UNAUTHORIZED]: 'Unauthorized',
       [HttpStatus.FORBIDDEN]: 'Forbidden',
       [HttpStatus.NOT_FOUND]: 'Not Found',
+      [HttpStatus.METHOD_NOT_ALLOWED]: 'Method Not Allowed',
       [HttpStatus.CONFLICT]: 'Conflict',
       [HttpStatus.UNPROCESSABLE_ENTITY]: 'Unprocessable Entity',
+      [HttpStatus.TOO_MANY_REQUESTS]: 'Too Many Requests',
       [HttpStatus.INTERNAL_SERVER_ERROR]: 'Internal Server Error',
+      [HttpStatus.SERVICE_UNAVAILABLE]: 'Service Unavailable',
     };
 
-    return titles[status] || 'Error';
+    return fallbackTitles[status] || 'Error';
   }
 }
