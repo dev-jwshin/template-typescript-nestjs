@@ -26,20 +26,37 @@ export interface CacheStore {
    * 캐시 값 삭제
    *
    * @param key - 캐시 키
+   * @returns 삭제 성공 여부
    */
-  delete(key: string): Promise<void>;
+  delete(key: string): Promise<boolean>;
 
   /**
    * 패턴 매칭 캐시 삭제
    *
    * @param pattern - 정규식 패턴 (예: '^users:')
+   * @returns 삭제된 키의 개수
    */
-  deletePattern(pattern: string): Promise<void>;
+  deletePattern(pattern: string): Promise<number>;
 
   /**
    * 전체 캐시 삭제
    */
   clear(): Promise<void>;
+
+  /**
+   * 키 존재 여부 확인
+   *
+   * @param key - 캐시 키
+   * @returns 키 존재 여부
+   */
+  has(key: string): Promise<boolean>;
+
+  /**
+   * 모든 키 목록 조회
+   *
+   * @returns 캐시 키 배열
+   */
+  keys(): Promise<string[]>;
 
   /**
    * 캐시 항목 개수

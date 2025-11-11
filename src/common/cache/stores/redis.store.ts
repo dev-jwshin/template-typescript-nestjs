@@ -135,12 +135,16 @@ export class RedisStore implements CacheStore {
 
   /**
    * 캐시 값 삭제
+   *
+   * @returns 삭제 성공 여부
    */
-  async delete(key: string): Promise<void> {
+  async delete(key: string): Promise<boolean> {
     try {
-      await this.client.del(key);
+      const result = await this.client.del(key);
+      return result > 0;
     } catch (error) {
       console.error(`[RedisStore] delete("${key}") 실패:`, error.message);
+      return false;
     }
   }
 
@@ -149,8 +153,10 @@ export class RedisStore implements CacheStore {
    *
    * Redis SCAN 명령을 사용하여 안전하게 키를 검색합니다.
    * 대용량 키셋에서도 서버 블로킹 없이 동작합니다.
+   *
+   * @returns 삭제된 키의 개수
    */
-  async deletePattern(pattern: string): Promise<void> {
+  async deletePattern(pattern: string): Promise<number> {
     try {
       let cursor = '0';
       const keysToDelete: string[] = [];
@@ -175,11 +181,14 @@ export class RedisStore implements CacheStore {
           `[RedisStore] 패턴 "${pattern}" 매칭 키 ${keysToDelete.length}개 삭제`,
         );
       }
+
+      return keysToDelete.length;
     } catch (error) {
       console.error(
         `[RedisStore] deletePattern("${pattern}") 실패:`,
         error.message,
       );
+      return 0;
     }
   }
 
@@ -207,6 +216,31 @@ export class RedisStore implements CacheStore {
       console.error('[RedisStore] size() 실패:', error.message);
       return 0;
     }
+  }
+
+  /**
+   * 키 존재 여부 확인
+   *
+   * @param key - 캐시 키
+   * @returns 키 존재 여부
+   */
+  async has(key: string): Promise<boolean> {
+    try {
+      const exists = await this.client.exists(key);
+      return exists === 1;
+    } catch (error) {
+      console.error(`[RedisStore] has("${key}") 실패:`, error.message);
+      return false;
+    }
+  }
+
+  /**
+   * 모든 키 목록 조회
+   *
+   * @returns 캐시 키 배열
+   */
+  async keys(): Promise<string[]> {
+    return this.getKeys('*');
   }
 
   /**
